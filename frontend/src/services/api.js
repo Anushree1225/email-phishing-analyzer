@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev";
 
 const MOCK_RESPONSE = {
   risk_score: 87,
@@ -45,7 +45,7 @@ const MOCK_RESPONSE = {
   scanned_at: new Date().toISOString(),
 };
 
-const USE_MOCK = true; // Set to false when backend is ready
+const USE_MOCK = false; // Set to false when backend is ready
 
 // Simulated delay for mock
 const mockDelay = (ms) => new Promise((r) => setTimeout(r, ms));
