@@ -5,16 +5,11 @@ from routers.analyze import router
 
 app = FastAPI(title="Email Phishing Analyzer")
 
-# 1. Explicitly list your frontend Codespaces domain
-origins = [
-    "https://effective-space-engine-699g7rrqrx67cgp4-3000.app.github.dev",
-    "http://localhost:3000"
-]
-
+# The ultimate fail-safe cloud proxy CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # 👈 Use the explicit list instead of "*"
-    allow_credentials=True,     # 👈 Must be True for Codespaces cookies/headers
+    allow_origins=["*"],  # Allows all cloud proxy origins dynamically
+    allow_credentials=False, # Must be False when allow_origins is ["*"] to satisfy browser engines
     allow_methods=["*"],
     allow_headers=["*"],
 )
