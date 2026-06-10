@@ -1,12 +1,6 @@
 /**
  * FindingsList - renders threat indicators, highlighted suspicious content,
- *               and URL intelligence (redirect chains, safe/danger badges).
- *
- * Props:
- *   dark              {boolean}  - theme flag
- *   reasons           {Array}    - array of { type, message } from API
- *   highlightedContent{Array}    - array of { text, reason }
- *   urlsFound         {Array}    - array of { url, safe, redirect_chain }
+ * URL intelligence, and advanced EML server transport authentication.
  */
 
 const ICON_MAP = {
@@ -16,6 +10,7 @@ const ICON_MAP = {
   urgent_language:    "⚡",
   suspicious_url:     "🔗",
   spoofed_header:     "🎭",
+  legal_trigger:      "⚖️"
 };
 
 function SectionTitle({ label, dark }) {
@@ -34,7 +29,7 @@ function SectionTitle({ label, dark }) {
   );
 }
 
-export default function FindingsList({ dark, reasons, highlightedContent, urlsFound }) {
+export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails }) {
   const cardStyle = {
     background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
     border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
@@ -45,8 +40,72 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     gap: "1.5rem",
   };
 
+  // Helper function to build dynamic neon status pills for the security layer
+  const renderAuthBadge = (protocol, status) => {
+    const isPass = status === "PASS";
+    const isFail = status === "FAIL";
+    
+    let bg = "rgba(148,163,184,0.1)";
+    let border = "1px solid rgba(148,163,184,0.2)";
+    let color = dark ? "#94a3b8" : "#64748b";
+
+    if (isPass) {
+      bg = "rgba(34,197,94,0.08)";
+      border = "1px solid rgba(34,197,94,0.3)";
+      color = "#22c55e";
+    } else if (isFail) {
+      bg = "rgba(239,68,68,0.08)";
+      border = "1px solid rgba(239,68,68,0.3)";
+      color = "#ef4444";
+    }
+
+    return (
+      <div style={{
+        flex: 1, padding: "0.6rem", background: bg, border: border, borderRadius: 10, textAlign: "center"
+      }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.58rem", color: dark ? "#64748b" : "#94a3b8", letterSpacing: 1 }}>{protocol}</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: "0.85rem", color: color, marginTop: "0.15rem" }}>{status}</div>
+      </div>
+    );
+  };
+
   return (
     <div style={cardStyle}>
+
+      {/* ── 🛡️ EXTRACTION LAYER: ADVANCED EML FORNSICS PANEL (ONLY FOR FILES) ── */}
+      {emlDetails && (
+        <div style={{
+          paddingBottom: "1.25rem",
+          borderBottom: `1px dashed ${dark ? "rgba(56,189,248,0.15)" : "rgba(3,105,161,0.15)"}`,
+          display: "flex", flexDirection: "column", gap: "1rem"
+        }}>
+          <div>
+            <SectionTitle label="🔒 Security Protocol Verification" dark={dark} />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {renderAuthBadge("SPF (Sender Policy)", emlDetails.authentication.spf)}
+              {renderAuthBadge("DKIM (Signature)", emlDetails.authentication.dkim)}
+              {renderAuthBadge("DMARC (Alignment)", emlDetails.authentication.dmarc)}
+            </div>
+          </div>
+
+          <div style={{
+            padding: "0.9rem",
+            background: emlDetails.metadata.header_mismatch 
+              ? "rgba(239,68,68,0.04)" 
+              : dark ? "rgba(30,58,95,0.2)" : "rgba(241,245,249,0.7)",
+            border: `1px solid ${emlDetails.metadata.header_mismatch ? "rgba(239,68,68,0.2)" : dark ? "#1e3a5f" : "#e2e8f0"}`,
+            borderRadius: 12, fontSize: "0.78rem", fontFamily: "'Space Mono', monospace"
+          }}>
+            <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.4rem" }}>TRANSPATH METADATA</div>
+            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: dark ? "#cbd5e1" : "#334155" }}>
+              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>FROM:</span> {emlDetails.metadata.from}
+            </div>
+            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>REPLY-TO:</span> {emlDetails.metadata.reply_to}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Threat Indicators ── */}
       <div>

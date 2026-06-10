@@ -274,6 +274,7 @@ export default function Dashboard({ dark, toggleTheme }) {
                 reasons={result.reasons}
                 highlightedContent={result.highlighted_content}
                 urlsFound={result.urls_found}
+                emlDetails={result.eml_details} // 👈 Added this to feed the child component
               />
             </div>
 
