@@ -47,35 +47,42 @@ async def analyze_email_file(file: UploadFile = File(...)):
     file_bytes = await file.read()
     print(f"Successfully Buffered: {len(file_bytes)} bytes")
     
-    # 🎯 REAL ROUTING FOR WEEK 2 EXTRACTION
+    # 🎯 REAL ROUTING FOR WEEK 2 EXTRACTION & RISK CALCULATION
     if file_extension == "eml":
         try:
-            # Parse the real file content
-            eml_data = parse_eml(file_bytes)
+            # Parse and execute real dynamic scoring logic on the file content
+            eml_analysis = parse_eml(file_bytes)
             
-            # ─────────────── 🖥️ TERMINAL FORENSIC MONITOR ───────────────
+            # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
             print("\n" + "="*50)
-            print(" 🛡️  RAW EML FORENSIC REPORT GENERATED")
+            print(" 🛡️  DYNAMIC RISK SCORING EVALUATION COMPLETE")
             print("="*50)
-            print(f" SENDER (FROM):   {eml_data['metadata']['from']}")
-            print(f" RECIPIENT (TO):  {eml_data['metadata']['to']}")
-            print(f" SUBJECT:         {eml_data['metadata']['subject']}")
-            print(f" REPLY-TO:        {eml_data['metadata']['reply_to']}")
-            print(f" SPOOF INDICATOR: {eml_data['metadata']['header_mismatch']} (From vs Reply-To Mismatch)")
+            print(f" FILE:            {filename}")
+            print(f" SENDER (FROM):   {eml_analysis['metadata']['from']}")
+            print(f" SUBJECT:         {eml_analysis['metadata']['subject']}")
+            print(f" CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
             print("-"*50)
-            print(" 🔐 EMAIL AUTHENTICATION STATUS")
-            print(f"   SPF:   {eml_data['authentication']['spf']}")
-            print(f"   DKIM:  {eml_data['authentication']['dkim']}")
-            print(f"   DMARC: {eml_data['authentication']['dmarc']}")
+            print(f" 🚨 THREAT FINDINGS MAPPED ({len(eml_analysis['reasons'])}):")
+            for reason in eml_analysis['reasons']:
+                print(f"   ⚠️  [{reason['type'].upper()}] - {reason['message']}")
             print("-"*50)
-            print(f" 📄 TEXT BODY PREVIEW (First 200 Chars):\n {eml_data['body_preview'][:200]}...")
+            print(f" 📄 SANITIZED TEXT LOOKUP:\n {eml_analysis['clean_text_content'][:250]}...")
             print("="*50 + "\n")
             # ────────────────────────────────────────────────────────────
 
-            # Combine real parsed headers with your baseline frontend output matrix
-            base_response = generate_mock_response(source_type=f"Raw EML Message Structure ({filename})")
-            base_response["eml_details"] = eml_data  
-            return base_response
+            # Construct response using the real runtime calculated score matrices!
+            return {
+                "risk_score": eml_analysis["risk_score"],
+                "severity": eml_analysis["severity"],
+                # If no threat reasons matched, send a friendly baseline string to prevent UI gaps
+                "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found across headers or basic text scans."}],
+                "recommended_action": eml_analysis["recommended_action"],
+                "urls_found": [], # Your url_analyzer.py service will populate this next!
+                "highlighted_content": [], 
+                "scan_id": f"SCAN-{uuid.uuid4().hex[:8].upper()}",
+                "scanned_at": datetime.utcnow().isoformat() + "Z",
+                "eml_details": eml_analysis # Passes all raw headers & tags safely to the React dashboard
+            }
             
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
