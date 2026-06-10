@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://localhost:8000";
 
 const MOCK_RESPONSE = {
   risk_score: 87,
