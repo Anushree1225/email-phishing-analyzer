@@ -1,21 +1,68 @@
 import email
 from email import policy
 import re
+import dns.resolver  # 🚀 Used for live global DNS queries!
 
 def clean_html_tags(html_text: str) -> str:
     """Strips HTML formatting tags to extract pure text content for analysis."""
-    # Remove script and style blocks entirely
     clean_text = re.sub(r'<(script|style).*?>.*?</\1>', '', html_text, flags=re.DOTALL | re.IGNORECASE)
-    # Strip remaining HTML tags
     clean_text = re.sub(r'<[^>]*>', ' ', clean_text)
-    # Collapse multiple spaces/newlines into a clean stream
     clean_text = re.sub(r'\s+', ' ', clean_text)
     return clean_text.strip()
 
+def check_dns_records(domain: str) -> dict:
+    """
+    Queries live global DNS records using dnspython to extract MX configurations,
+    raw SPF policies, and explicit DMARC alignment enforcement structures.
+    """
+    dns_report = {
+        "mx_check": "NOT FOUND",
+        "mx_records": [],
+        "spf_record": "NOT FOUND",
+        "dmarc_policy": "NOT FOUND"
+    }
+    
+    if not domain or "." not in domain:
+        return dns_report
+
+    # 1. LIVE MX RECORDS LOOKUP
+    try:
+        mx_answers = dns.resolver.resolve(domain, 'MX')
+        dns_report["mx_records"] = [str(r.exchange).strip(".") for r in mx_answers]
+        if dns_report["mx_records"]:
+            dns_report["mx_check"] = "VALID (Mail Servers Configured)"
+    except Exception:
+        dns_report["mx_check"] = "FAILED (No Mail Servers Found)"
+
+    # 2. LIVE SPF RECORD LOOKUP (Hunted inside domain TXT strings)
+    try:
+        txt_answers = dns.resolver.resolve(domain, 'TXT')
+        for r in txt_answers:
+            txt_string = str(r).strip('"')
+            if txt_string.startswith("v=spf1"):
+                dns_report["spf_record"] = txt_string
+                break
+    except Exception:
+        dns_report["spf_record"] = "FAILED (No SPF TXT record deployed)"
+
+    # 3. LIVE DMARC POLICY LOOKUP (Hunted at _dmarc.<domain>)
+    try:
+        dmarc_answers = dns.resolver.resolve(f"_dmarc.{domain}", 'TXT')
+        for r in dmarc_answers:
+            txt_string = str(r).strip('"')
+            if txt_string.startswith("v=DMARC1"):
+                dns_report["dmarc_policy"] = txt_string
+                break
+    except Exception:
+        dns_report["dmarc_policy"] = "FAILED (No DMARC record deployed)"
+
+    return dns_report
+
+
 def parse_eml(file_bytes: bytes) -> dict:
     """
-    Advanced EML parser that extracts core metadata, handles HTML body sanitization,
-    and runs a multi-vector heuristic risk calculation engine.
+    Advanced EML parser that conducts multi-vector heuristic risk calculations
+    and integrates real-time global DNS lookup metrics.
     """
     msg = email.message_from_bytes(file_bytes, policy=policy.default)
     
@@ -28,7 +75,16 @@ def parse_eml(file_bytes: bytes) -> dict:
     auth_results_header = msg.get("Authentication-Results", "")
     received_spf_header = msg.get("Received-SPF", "")
     
-    # 2. Authentication Checks
+    # Extract sender domain name using clean regex matching
+    sender_domain = ""
+    domain_match = re.search(r'@([\w\.-]+)', email_from)
+    if domain_match:
+        sender_domain = domain_match.group(1).strip(">").strip("]").lower()
+
+    # 2. Execute Live External DNS Lookup Vector!
+    dns_metrics = check_dns_records(sender_domain)
+
+    # 3. Built-in Transport Authentication Checks
     spf_status = "UNKNOWN"
     combined_spf_target = (received_spf_header + " " + auth_results_header).lower()
     if "spf=pass" in combined_spf_target or "pass (google.com" in combined_spf_target:
@@ -49,7 +105,7 @@ def parse_eml(file_bytes: bytes) -> dict:
 
     header_mismatch = reply_to != "Not Specified" and email_from != reply_to
 
-    # 3. Robust Body Extraction (Handles text AND dense HTML formatting)
+    # 4. Robust Body Extraction
     plain_body = ""
     html_body = ""
     
@@ -67,10 +123,9 @@ def parse_eml(file_bytes: bytes) -> dict:
         else:
             plain_body = msg.get_payload(decode=True).decode(errors="ignore")
 
-    # If no pure plain text layer was found, clean the HTML layer down to raw text words
     extracted_text = plain_body if plain_body.strip() else clean_html_tags(html_body)
 
-    # 🧮 4. THE RISK SCORING WEIGHT ENGINE (Heuristic Mapping)
+    # 🧮 5. THE RISK SCORING WEIGHT ENGINE
     calculated_risk = 0
     reasons = []
     recommended_actions = ["Monitor account logs for suspicious activity"]
@@ -82,9 +137,9 @@ def parse_eml(file_bytes: bytes) -> dict:
     if spf_status == "FAIL":
         calculated_risk += 30
         reasons.append({"type": "spf_fail", "message": "SPF validation failed—unauthorized server source."})
-    elif spf_status in ["SOFTFAIL", "NONE"]:
+    elif spf_status in ["SOFTFAIL", "NONE", "UNKNOWN"]:
         calculated_risk += 15
-        reasons.append({"type": "spf_weak", "message": "Domain has a relaxed, spoofable mail deployment protocol."})
+        reasons.append({"type": "sender_verification", "message": "Domain has a relaxed, spoofable mail deployment protocol."})
 
     if dkim_status == "FAIL":
         calculated_risk += 20
@@ -94,7 +149,11 @@ def parse_eml(file_bytes: bytes) -> dict:
         calculated_risk += 25
         reasons.append({"type": "dmarc_fail", "message": "DMARC alignment validation failed completely."})
 
-    # Simple Keyword Heuristic checks before integrating the full AI model later
+    # Domain Validation Weight Modifiers
+    if dns_metrics["mx_check"].startswith("FAILED"):
+        calculated_risk += 25
+        reasons.append({"type": "lookalike_domain", "message": "Critical: Sending domain has no valid MX mail servers configured."})
+
     lower_text = extracted_text.lower()
     if "lawsuit" in lower_text or "court" in lower_text or "notice" in lower_text:
         calculated_risk += 10
@@ -104,10 +163,8 @@ def parse_eml(file_bytes: bytes) -> dict:
         calculated_risk += 20
         reasons.append({"type": "credential_request", "message": "Text structure indicates a verification or credential capture attempt."})
 
-    # Bound risk score max at 100%
     final_risk_score = min(calculated_risk, 100)
     
-    # Determine Severity Classification Label based on calculations
     severity = "Low"
     if final_risk_score >= 70:
         severity = "High"
@@ -126,6 +183,7 @@ def parse_eml(file_bytes: bytes) -> dict:
             "to": email_to,
             "subject": email_subject,
             "reply_to": reply_to,
+            "sender_domain": sender_domain,
             "header_mismatch": header_mismatch
         },
         "authentication": {
@@ -133,5 +191,7 @@ def parse_eml(file_bytes: bytes) -> dict:
             "dkim": dkim_status,
             "dmarc": dmarc_status
         },
+        # 🌐 Injecting your requested real-time network lookup parameters cleanly!
+        "dns_intelligence": dns_metrics,
         "clean_text_content": extracted_text[:1200]
     }
