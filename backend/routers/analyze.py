@@ -1,8 +1,12 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from datetime import datetime
 import uuid
+
+# Import your custom EML parsing engine from the services folder
+from services.eml_parser import parse_eml
 
 router = APIRouter()
 
@@ -11,7 +15,6 @@ router = APIRouter()
 def analyze_email(payload: Dict[str, Any]):
     print(f"--- [DEBUG] Frontend JSON payload keys received: {list(payload.keys())} ---")
     
-    # Added "email_text" right at the front of the line to catch Claude's exact key!
     email_text = ""
     for key in ["email_text", "text", "content", "emailText", "email_content", "email"]:
         if key in payload and payload[key]:
@@ -32,10 +35,8 @@ async def analyze_email_file(file: UploadFile = File(...)):
     print(f"Filename: {filename}")
     print(f"Content-Type: {content_type}")
     
-    # Extract extension safely
     file_extension = filename.split(".")[-1].lower() if "." in filename else ""
     
-    # Validate against Week 1 allowed project scopes
     allowed_extensions = ["eml", "pdf", "png", "jpg", "jpeg"]
     if file_extension not in allowed_extensions:
         raise HTTPException(
@@ -43,20 +44,49 @@ async def analyze_email_file(file: UploadFile = File(...)):
             detail=f"Unsupported file format .{file_extension}. Please upload .eml, .pdf, or image screenshots."
         )
         
-    # Read raw binary data stream 
     file_bytes = await file.read()
     print(f"Successfully Buffered: {len(file_bytes)} bytes")
     
-    # Week 2 Extraction routing visualization routing logic
-    detected_format_label = "Unknown File Context"
+    # 🎯 REAL ROUTING FOR WEEK 2 EXTRACTION
     if file_extension == "eml":
-        detected_format_label = "Raw EML Message Structure"
+        try:
+            # Parse the real file content
+            eml_data = parse_eml(file_bytes)
+            
+            # ─────────────── 🖥️ TERMINAL FORENSIC MONITOR ───────────────
+            print("\n" + "="*50)
+            print(" 🛡️  RAW EML FORENSIC REPORT GENERATED")
+            print("="*50)
+            print(f" SENDER (FROM):   {eml_data['metadata']['from']}")
+            print(f" RECIPIENT (TO):  {eml_data['metadata']['to']}")
+            print(f" SUBJECT:         {eml_data['metadata']['subject']}")
+            print(f" REPLY-TO:        {eml_data['metadata']['reply_to']}")
+            print(f" SPOOF INDICATOR: {eml_data['metadata']['header_mismatch']} (From vs Reply-To Mismatch)")
+            print("-"*50)
+            print(" 🔐 EMAIL AUTHENTICATION STATUS")
+            print(f"   SPF:   {eml_data['authentication']['spf']}")
+            print(f"   DKIM:  {eml_data['authentication']['dkim']}")
+            print(f"   DMARC: {eml_data['authentication']['dmarc']}")
+            print("-"*50)
+            print(f" 📄 TEXT BODY PREVIEW (First 200 Chars):\n {eml_data['body_preview'][:200]}...")
+            print("="*50 + "\n")
+            # ────────────────────────────────────────────────────────────
+
+            # Combine real parsed headers with your baseline frontend output matrix
+            base_response = generate_mock_response(source_type=f"Raw EML Message Structure ({filename})")
+            base_response["eml_details"] = eml_data  
+            return base_response
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
+            
     elif file_extension == "pdf":
         detected_format_label = "PDF Electronic Document Document"
+        return generate_mock_response(source_type=f"{detected_format_label} ({filename})")
+        
     elif file_extension in ["png", "jpg", "jpeg"]:
         detected_format_label = "Image Screenshot Data (OCR Target)"
-
-    return generate_mock_response(source_type=f"{detected_format_label} ({filename})")
+        return generate_mock_response(source_type=f"{detected_format_label} ({filename})")
 
 
 # --- CORE OUTPUT RESPONSE MATRIX MATCHING THE FRONTEND LOOK ---

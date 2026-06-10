@@ -1,17 +1,21 @@
-# backend/main.py
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from routers.analyze import router
+from fastapi.middleware.cors import CORSMiddleware  # 👈 Import this!
+from routers import analyze
 
-app = FastAPI(title="Email Phishing Analyzer")
+app = FastAPI(title="Email Phishing Analyzer API")
 
-# The ultimate fail-safe cloud proxy CORS setup
+# 🌐 ALLOW ALL CROSS-ORIGIN REQUESTS (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all cloud proxy origins dynamically
-    allow_credentials=False, # Must be False when allow_origins is ["*"] to satisfy browser engines
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # 👈 This tells the browser to allow ANY frontend to talk to this API
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows GET, POST, OPTIONS, etc.
+    allow_headers=["*"],  # Allows any custom headers (like Content-Type)
 )
 
-app.include_router(router)
+# Include your routers
+app.include_router(analyze.router)
+
+@app.get("/")
+def read_root():
+    return {"message": "Email Phishing Analyzer Backend is running smoothly!"}
