@@ -40,6 +40,27 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     gap: "1.5rem",
   };
 
+  // Styles for the forensic intelligence data grid
+  const tableLabelStyle = {
+    padding: "0.6rem 0.75rem",
+    fontFamily: "'Space Mono', monospace",
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    color: dark ? "#64748b" : "#94a3b8",
+    width: "160px",
+    verticalAlign: "top",
+    borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`
+  };
+
+  const tableValueStyle = {
+    padding: "0.6rem 0.75rem",
+    fontFamily: "'Space Mono', monospace",
+    fontSize: "0.72rem",
+    color: dark ? "#e2e8f0" : "#334155",
+    wordBreak: "break-all",
+    borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`
+  };
+
   // Helper function to build dynamic neon status pills for the security layer
   const renderAuthBadge = (protocol, status) => {
     const isPass = status === "PASS";
@@ -72,7 +93,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   return (
     <div style={cardStyle}>
 
-      {/* ── 🛡️ EXTRACTION LAYER: ADVANCED EML FORNSICS PANEL (ONLY FOR FILES) ── */}
+      {/* ── 🛡️ EXTRACTION LAYER: ADVANCED EML FORENSICS PANEL (ONLY FOR FILES) ── */}
       {emlDetails && (
         <div style={{
           paddingBottom: "1.25rem",
@@ -107,7 +128,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── Threat Indicators ── */}
+      {/* ── 🚨 THREAT INDICATORS: BRIDGED TO THE TOP FOR OPTIMAL USER CLARITY ── */}
       <div>
         <SectionTitle label="⚠ Threat Indicators" dark={dark} />
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -134,6 +155,89 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
           ))}
         </div>
       </div>
+
+      {/* ── 🌐 LIVE DNS FORENSICS GRID PUSHED LOWER FOR TECH EXPERTS ── */}
+      {emlDetails && emlDetails.dns_intelligence && (
+        <div style={{
+          marginTop: "0.25rem",
+          padding: "1rem 1.25rem",
+          background: dark ? "rgba(15,23,42,0.4)" : "rgba(248,250,252,0.6)",
+          border: `1px solid ${dark ? "rgba(56,189,248,0.08)" : "#e2e8f0"}`,
+          borderRadius: 12,
+        }}>
+          <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.6rem", fontFamily: "'Space Mono', monospace" }}>
+            NETWORK RESOLVER INTELLIGENCE
+          </div>
+          
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <tbody>
+              <tr>
+                <td style={tableLabelStyle}>TARGET DOMAIN</td>
+                <td style={tableValueStyle}>
+                  <strong style={{ color: dark ? "#38bdf8" : "#0369a1" }}>{emlDetails.metadata.sender_domain}</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style={tableLabelStyle}>MX CHECK STATUS</td>
+                <td style={tableValueStyle}>
+                  <span style={{ color: emlDetails.dns_intelligence.mx_check.includes("VALID") ? "#22c55e" : "#ef4444", fontWeight: 600 }}>
+                    {emlDetails.dns_intelligence.mx_check}
+                  </span>
+                  {emlDetails.dns_intelligence.mx_records?.length > 0 && (
+                    <div style={{ fontSize: "0.65rem", color: dark ? "#64748b" : "#94a3b8", marginTop: 4 }}>
+                      MX Hosts: {emlDetails.dns_intelligence.mx_records.join(", ")}
+                    </div>
+                  )}
+                </td>
+              </tr>
+
+              {/* ── 🔒 SPF RECORD ROW WITH CORE ANALYST NOTE ── */}
+              <tr>
+                <td style={tableLabelStyle}>SPF RECORD</td>
+                <td style={tableValueStyle}>
+                  <div style={{ color: emlDetails.dns_intelligence.spf_record.includes("FAILED") ? "#ef4444" : "#22c55e", fontSize: "0.68rem" }}>
+                    {emlDetails.dns_intelligence.spf_record}
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.62rem", 
+                    color: dark ? "#94a3b8" : "#475569", 
+                    marginTop: 6, 
+                    fontFamily: "sans-serif",
+                    background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    display: "inline-block"
+                  }}>
+                    🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Analyst Guidance:</span> {emlDetails.dns_intelligence.spf_analyst_note}
+                  </div>
+                </td>
+              </tr>
+
+              {/* ── 🛡️ DMARC POLICY ROW WITH CORE ANALYST NOTE ── */}
+              <tr>
+                <td style={tableLabelStyle}>DMARC POLICY</td>
+                <td style={tableValueStyle}>
+                  <div style={{ color: emlDetails.dns_intelligence.dmarc_policy.includes("FAILED") ? "#ef4444" : "#22c55e", fontSize: "0.68rem" }}>
+                    {emlDetails.dns_intelligence.dmarc_policy}
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.62rem", 
+                    color: dark ? "#94a3b8" : "#475569", 
+                    marginTop: 6, 
+                    fontFamily: "sans-serif",
+                    background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    display: "inline-block"
+                  }}>
+                    🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Analyst Guidance:</span> {emlDetails.dns_intelligence.dmarc_analyst_note}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Highlighted Suspicious Content ── */}
       {highlightedContent?.length > 0 && (
