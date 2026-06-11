@@ -1,6 +1,6 @@
 /**
  * FindingsList - renders threat indicators, highlighted suspicious content,
- * URL intelligence, and advanced EML server transport authentication.
+ * URL intelligence, advanced EML forensics, and file attachment payloads.
  */
 
 const ICON_MAP = {
@@ -124,6 +124,12 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
             <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
               <span style={{ color: dark ? "#475569" : "#94a3b8" }}>REPLY-TO:</span> {emlDetails.metadata.reply_to}
             </div>
+            {/* 🚀 NEW: HIDDEN RETURN-PATH ROUTING DISPLAY */}
+            {emlDetails.metadata.return_path && (
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+                <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {emlDetails.metadata.return_path}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -190,8 +196,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                   )}
                 </td>
               </tr>
-
-              {/* ── 🔒 SPF RECORD ROW WITH CORE ANALYST NOTE ── */}
               <tr>
                 <td style={tableLabelStyle}>SPF RECORD</td>
                 <td style={tableValueStyle}>
@@ -212,8 +216,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                   </div>
                 </td>
               </tr>
-
-              {/* ── 🛡️ DMARC POLICY ROW WITH CORE ANALYST NOTE ── */}
               <tr>
                 <td style={tableLabelStyle}>DMARC POLICY</td>
                 <td style={tableValueStyle}>
@@ -236,6 +238,75 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
               </tr>
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── 📁 ATTACHMENT ANALYTICS MODULE WITH EXPLICIT SAFETY VERIFICATION ── */}
+      {emlDetails && emlDetails.attachments && emlDetails.attachments.length > 0 && (
+        <div>
+          <SectionTitle label="📎 Attachment Inventory" dark={dark} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {emlDetails.attachments.map((file, i) => {
+              const dangerous_extensions = ["exe", "bat", "scr", "vbs", "cmd", "lnk", "zip", "rar"];
+              const isDangerous = dangerous_extensions.includes(file.extension);
+              
+              return (
+                <div 
+                  key={i} 
+                  style={{
+                    padding: "0.75rem 1rem",
+                    background: isDangerous 
+                      ? "rgba(239,68,68,0.07)" 
+                      : dark ? "rgba(34,197,94,0.04)" : "rgba(34,197,94,0.02)",
+                    border: `1px solid ${isDangerous ? "rgba(239,68,68,0.25)" : "rgba(34,197,94,0.2)"}`,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "1rem"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", overflow: "hidden" }}>
+                    <span style={{ fontSize: 13 }}>{isDangerous ? "🚫" : "✅"}</span>
+                    <div style={{ overflow: "hidden" }}>
+                      <span style={{ 
+                        fontFamily: "'Space Mono', monospace", 
+                        fontSize: "0.75rem", 
+                        fontWeight: isDangerous ? 700 : 500,
+                        color: isDangerous ? "#ef4444" : dark ? "#e2e8f0" : "#1e293b",
+                        wordBreak: "break-all"
+                      }}>
+                        {file.filename}
+                      </span>
+                      <span style={{ 
+                        fontFamily: "'Space Mono', monospace", 
+                        fontSize: "0.65rem", 
+                        color: dark ? "#64748b" : "#94a3b8", 
+                        marginLeft: 10 
+                      }}>
+                        ({file.size_kb > 1024 ? `${(file.size_kb / 1024).toFixed(2)} MB` : `${file.size_kb} KB`})
+                      </span>
+                    </div>
+                  </div>
+
+                  {isDangerous && (
+                    <span style={{ 
+                      fontSize: '0.58rem', 
+                      background: 'rgba(239,68,68,0.1)', 
+                      color: '#ef4444', 
+                      padding: '2px 6px', 
+                      borderRadius: 4, 
+                      fontWeight: 700,
+                      fontFamily: 'sans-serif',
+                      flexShrink: 0
+                    }}>
+                      CRITICAL PAYLOAD
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -266,48 +337,48 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── URL Intelligence ── */}
+      {/* ── 🔗 URL INTELLIGENCE: DISPLAYS ALL BODY LINKS WITH DYNAMIC SAFETY VALIDATION ── */}
       {urlsFound?.length > 0 && (
         <div>
           <SectionTitle label="🔗 URL Intelligence" dark={dark} />
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {urlsFound.map((u, i) => (
               <div
                 key={i}
                 style={{
-                  padding: "0.9rem 1rem",
+                  padding: "0.75rem 1rem",
                   background: u.safe
-                    ? dark ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.04)"
+                    ? dark ? "rgba(34,197,94,0.04)" : "rgba(34,197,94,0.02)"
                     : dark ? "rgba(239,68,68,0.07)" : "rgba(239,68,68,0.04)",
-                  border: `1px solid ${u.safe ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
+                  border: `1px solid ${u.safe ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.25)"}`,
                   borderRadius: 10,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: u.redirect_chain.length > 0 ? "0.55rem" : 0 }}>
-                  <span style={{ fontSize: 14 }}>{u.safe ? "✅" : "🚫"}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span style={{ fontSize: 13 }}>{u.safe ? "✅" : "🚫"}</span>
                   <span style={{
                     fontFamily: "'Space Mono', monospace",
-                    fontSize: "0.78rem",
+                    fontSize: "0.75rem",
                     color: u.safe ? "#22c55e" : "#ef4444",
-                    fontWeight: 700,
+                    fontWeight: u.safe ? 500 : 700,
                     wordBreak: "break-all",
                   }}>
                     {u.url}
                   </span>
+                  {!u.safe && (
+                    <span style={{ 
+                      fontSize: '0.58rem', 
+                      background: 'rgba(239,68,68,0.1)', 
+                      color: '#ef4444', 
+                      padding: '2px 6px', 
+                      borderRadius: 4, 
+                      fontWeight: 700,
+                      fontFamily: 'sans-serif'
+                    }}>
+                      SUSPICIOUS CORE
+                    </span>
+                  )}
                 </div>
-                {u.redirect_chain.length > 0 && (
-                  <div style={{ paddingLeft: "1.5rem" }}>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.67rem", color: "#f59e0b", marginBottom: "0.25rem" }}>
-                      REDIRECT CHAIN:
-                    </div>
-                    {u.redirect_chain.map((r, j) => (
-                      <div key={j} style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: dark ? "#94a3b8" : "#64748b", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        {j > 0 && <span style={{ color: "#f59e0b" }}>→</span>}
-                        <span style={{ wordBreak: "break-all" }}>{r}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
           </div>
