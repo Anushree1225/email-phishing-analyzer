@@ -54,34 +54,49 @@ async def analyze_email_file(file: UploadFile = File(...)):
             eml_analysis = parse_eml(file_bytes)
             
             # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
-            print("\n" + "="*50)
+            print("\n" + "="*60)
             print(" 🛡️  DYNAMIC RISK SCORING EVALUATION COMPLETE")
-            print("="*50)
+            print("="*60)
             print(f" FILE:            {filename}")
             print(f" SENDER (FROM):   {eml_analysis['metadata']['from']}")
+            print(f" SENDER DOMAIN:   {eml_analysis['metadata']['sender_domain']}")
             print(f" SUBJECT:         {eml_analysis['metadata']['subject']}")
             print(f" CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
-            print("-"*50)
+            print("-"*60)
             print(f" 🚨 THREAT FINDINGS MAPPED ({len(eml_analysis['reasons'])}):")
             for reason in eml_analysis['reasons']:
                 print(f"   ⚠️  [{reason['type'].upper()}] - {reason['message']}")
-            print("-"*50)
+            
+            # 🌐 NEW: CORE DNS INTELLIGENCE DETAILED IN CODESPACE COMMAND LINE
+            print("-"*60)
+            print(" 🌐 LIVE DNS FORENSICS EXTRACTED:")
+            dns_info = eml_analysis['dns_intelligence']
+            print(f"   📧 MX ROUTING INFRA:  {dns_info['mx_check']}")
+            if dns_info['mx_records']:
+                print(f"      Mapped targets:   {', '.join(dns_info['mx_records'])}")
+            print(f"   🔒 DEPLOYED SPF TXT:  {dns_info['spf_record']}")
+            print(f"   🛡️  DMARC POLICY CORE: {dns_info['dmarc_policy']}")
+            
+            print("-"*60)
             print(f" 📄 SANITIZED TEXT LOOKUP:\n {eml_analysis['clean_text_content'][:250]}...")
-            print("="*50 + "\n")
+            print("="*60 + "\n")
             # ────────────────────────────────────────────────────────────
 
             # Construct response using the real runtime calculated score matrices!
             return {
                 "risk_score": eml_analysis["risk_score"],
                 "severity": eml_analysis["severity"],
-                # If no threat reasons matched, send a friendly baseline string to prevent UI gaps
-                "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found across headers or basic text scans."}],
+                "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found."}],
                 "recommended_action": eml_analysis["recommended_action"],
-                "urls_found": [], # Your url_analyzer.py service will populate this next!
+                "urls_found": [], 
                 "highlighted_content": [], 
                 "scan_id": f"SCAN-{uuid.uuid4().hex[:8].upper()}",
                 "scanned_at": datetime.utcnow().isoformat() + "Z",
-                "eml_details": eml_analysis # Passes all raw headers & tags safely to the React dashboard
+                
+                # 🎯 ADDED KEYS FOR ADVANCED SUB-PANELS
+                "file_type": "eml", 
+                "dns_intelligence": eml_analysis["dns_intelligence"],
+                "eml_details": eml_analysis 
             }
             
         except Exception as e:
