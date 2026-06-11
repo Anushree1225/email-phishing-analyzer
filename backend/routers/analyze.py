@@ -67,20 +67,19 @@ async def analyze_email_file(file: UploadFile = File(...)):
             for reason in eml_analysis['reasons']:
                 print(f"   ⚠️  [{reason['type'].upper()}] - {reason['message']}")
             
-            # 🌐 NEW: CORE DNS INTELLIGENCE DETAILED IN CODESPACE COMMAND LINE
+            # 🌐 UPDATED: CORE DNS INTELLIGENCE + SOC ANALYST GUIDANCE IN CMD LINE
             print("-"*60)
             print(" 🌐 LIVE DNS FORENSICS EXTRACTED:")
             dns_info = eml_analysis['dns_intelligence']
             print(f"   📧 MX ROUTING INFRA:  {dns_info['mx_check']}")
             if dns_info['mx_records']:
                 print(f"      Mapped targets:   {', '.join(dns_info['mx_records'])}")
-            print(f"   🔒 DEPLOYED SPF TXT:  {dns_info['spf_record']}")
-            print(f"   🛡️  DMARC POLICY CORE: {dns_info['dmarc_policy']}")
             
-            print("-"*60)
-            print(f" 📄 SANITIZED TEXT LOOKUP:\n {eml_analysis['clean_text_content'][:250]}...")
-            print("="*60 + "\n")
-            # ────────────────────────────────────────────────────────────
+            print(f"   🔒 DEPLOYED SPF TXT:  {dns_info['spf_record']}")
+            print(f"      🧠 Guidance:       {dns_info['spf_analyst_note']}") # 🚀 Added!
+            
+            print(f"   🛡️  DMARC POLICY CORE: {dns_info['dmarc_policy']}")
+            print(f"      🧠 Guidance:       {dns_info['dmarc_analyst_note']}") # 🚀 Added!
 
             # Construct response using the real runtime calculated score matrices!
             return {
