@@ -1,21 +1,27 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # 👈 Import this!
+from fastapi.middleware.cors import CORSMiddleware
 from routers import analyze
 
-app = FastAPI(title="Email Phishing Analyzer API")
+app = FastAPI(title="Email Phishing Analyzer Engine")
 
-# 🌐 ALLOW ALL CROSS-ORIGIN REQUESTS (CORS)
+# 🚀 Add your exact live cloud workspace URLs to the trusted whitelist
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://effective-space-engine-699g7rrqrx67cgp4-3000.app.github.dev", # Your live frontend browser link
+    "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev", # Your live backend proxy link
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 👈 This tells the browser to allow ANY frontend to talk to this API
+    allow_origins=origins,            # 🌟 Grants clean passage to your specific browser workspace!
     allow_credentials=True,
-    allow_methods=["*"],  # Allows GET, POST, OPTIONS, etc.
-    allow_headers=["*"],  # Allows any custom headers (like Content-Type)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Include your routers
 app.include_router(analyze.router)
 
 @app.get("/")
-def read_root():
-    return {"message": "Email Phishing Analyzer Backend is running smoothly!"}
+def root():
+    return {"status": "healthy", "engine": "FastAPI Email Phishing Core"}

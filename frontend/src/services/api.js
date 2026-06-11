@@ -1,8 +1,7 @@
 import axios from "axios";
 
-// 🚀 Clear and explicitly matched base URL endpoint string
-const API_BASE_URL = "http://127.0.0.1:8000";
-
+// 🚀 Use your actual workspace subdomain string from your frontend port link!
+const API_BASE_URL = "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev";
 const MOCK_RESPONSE = {
   risk_score: 87,
   severity: "High",
