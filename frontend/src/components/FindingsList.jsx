@@ -124,12 +124,35 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
             <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
               <span style={{ color: dark ? "#475569" : "#94a3b8" }}>REPLY-TO:</span> {emlDetails.metadata.reply_to}
             </div>
-            {/* 🚀 NEW: HIDDEN RETURN-PATH ROUTING DISPLAY */}
+            
+            {/* 🚀 FIXED: Replaced statement with standard JSX short-circuit logic */}
             {emlDetails.metadata.return_path && (
               <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
                 <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {emlDetails.metadata.return_path}
               </div>
             )}
+            
+            {/* ── DYNAMIC DOMAIN AGE SUMMARY LOGIC OVERRIDE ── */}
+            {emlDetails.metadata.domain_age && (() => {
+              const ageStr = emlDetails.metadata.domain_age;
+              const isNew = ageStr.includes("(NEWLY CREATED)");
+              const isSkipped = ageStr.includes("Skipped");
+              
+              const textAccentColor = isNew 
+                ? "#f59e0b" 
+                : isSkipped 
+                  ? (dark ? "#64748b" : "#94a3b8") 
+                  : (dark ? "#22c55e" : "#16a34a");
+                  
+              return (
+                <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+                  <span style={{ color: dark ? "#475569" : "#94a3b8" }}>DOMAIN AGE:</span>{' '}
+                  <span style={{ color: textAccentColor, fontWeight: isNew ? 700 : 500 }}>
+                    {ageStr}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -337,7 +360,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 🔗 URL INTELLIGENCE: DISPLAYS ALL BODY LINKS WITH DYNAMIC SAFETY VALIDATION ── */}
+      {/* ── 🔗 URL INTELLIGENCE ── */}
       {urlsFound?.length > 0 && (
         <div>
           <SectionTitle label="🔗 URL Intelligence" dark={dark} />
