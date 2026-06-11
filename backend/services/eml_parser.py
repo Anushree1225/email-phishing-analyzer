@@ -2,6 +2,7 @@ import email
 from email import policy
 import re
 import dns.resolver  # 🚀 Used for live global DNS queries!
+from email.utils import parseaddr
 
 def clean_html_tags(html_text: str) -> str:
     """Strips HTML formatting tags to extract pure text content for analysis."""
@@ -81,8 +82,8 @@ def check_dns_records(domain: str) -> dict:
 
 def parse_eml(file_bytes: bytes) -> dict:
     """
-    Advanced EML parser that conducts multi-vector heuristic risk calculations
-    and integrates real-time global DNS lookup metrics.
+    Advanced EML parser that conducts multi-vector heuristic risk calculations,
+    extracts attachments, maps comprehensive URL entities, and targets hidden routing paths.
     """
     msg = email.message_from_bytes(file_bytes, policy=policy.default)
     
@@ -95,13 +96,22 @@ def parse_eml(file_bytes: bytes) -> dict:
     auth_results_header = msg.get("Authentication-Results", "")
     received_spf_header = msg.get("Received-SPF", "")
     
-    # Extract sender domain name using clean regex matching
+    # ── 🎭 TRACE VECTOR 1: HIDDEN RETURN-PATH EXTRACTION ──
+    return_path_header = msg.get("Return-Path", "").strip("<>")
+    if not return_path_header:
+        return_path_header = msg.get("Envelope-From", msg.get("X-Return-Path", "Not Specified")).strip("<>")
+
+    # Extract sender domains clean matching strings
     sender_domain = ""
     domain_match = re.search(r'@([\w\.-]+)', email_from)
     if domain_match:
         sender_domain = domain_match.group(1).strip(">").strip("]").lower()
 
-    # 2. Execute Live External DNS Lookup Vector!
+    _, reply_to_email = parseaddr(reply_to)
+    reply_domain = reply_to_email.split("@")[-1].lower() if "@" in reply_to_email else ""
+    return_domain = return_path_header.split("@")[-1].lower() if "@" in return_path_header else ""
+
+    # 2. Execute Live External DNS Lookup Vector
     dns_metrics = check_dns_records(sender_domain)
 
     # 3. Built-in Transport Authentication Checks
@@ -124,26 +134,60 @@ def parse_eml(file_bytes: bytes) -> dict:
     if dmarc_match: dmarc_status = dmarc_match.group(1).upper()
 
     header_mismatch = reply_to != "Not Specified" and email_from != reply_to
+    return_path_mismatch = return_domain and sender_domain and (return_domain != sender_domain)
 
-    # 4. Robust Body Extraction
+    # 4. Multi-Layer Multipart Body Extraction & Attachment Identification
     plain_body = ""
     html_body = ""
+    attachments_discovered = []
     
-    if msg.is_multipart():
-        for part in msg.walk():
-            c_type = part.get_content_type()
-            if c_type == "text/plain":
-                plain_body += part.get_payload(decode=True).decode(errors="ignore")
-            elif c_type == "text/html":
-                html_body += part.get_payload(decode=True).decode(errors="ignore")
-    else:
-        c_type = msg.get_content_type()
-        if c_type == "text/html":
-            html_body = msg.get_payload(decode=True).decode(errors="ignore")
-        else:
-            plain_body = msg.get_payload(decode=True).decode(errors="ignore")
+    for part in msg.walk():
+        content_type = part.get_content_type()
+        content_disposition = str(part.get("Content-Disposition", ""))
+        
+        # ── 📁 TRACE VECTOR 2: ATTACHMENT IDENTIFICATION LAYER ──
+        if "attachment" in content_disposition or part.get_filename():
+            filename = part.get_filename() or "unnamed_payload"
+            try:
+                payload_bytes = part.get_payload(decode=True) or b""
+                file_size_kb = round(len(payload_bytes) / 1024, 1)
+            except Exception:
+                file_size_kb = 0.0
+                
+            attachments_discovered.append({
+                "filename": filename,
+                "size_kb": file_size_kb,
+                "extension": filename.split(".")[-1].lower() if "." in filename else "unknown"
+            })
+            continue
 
+        if content_type == "text/plain":
+            plain_body += part.get_payload(decode=True).decode(errors="ignore") or ""
+        elif content_type == "text/html":
+            html_body += part.get_payload(decode=True).decode(errors="ignore") or ""
+
+    searchable_html = html_body if html_body.strip() else ""
     extracted_text = plain_body if plain_body.strip() else clean_html_tags(html_body)
+
+    # ── 🔗 TRACE VECTOR 3: UNIVERSAL URL PARSING DECK ──
+    body_source_for_urls = html_body if html_body.strip() else plain_body
+    raw_urls = re.findall(r'https?://[^\s<>"\']+', body_source_for_urls)
+    urls_structured_registry = []
+    malicious_keywords = ["login", "verify", "update", "banking", "secure", "signin", "account"]
+    
+    for url in list(set(raw_urls)):
+        is_url_suspicious = False
+        url_lower = url.lower()
+        if any(kw in url_lower for kw in malicious_keywords):
+            is_url_suspicious = True
+        if "bit.ly" in url_lower or "tinyurl.com" in url_lower:
+            is_url_suspicious = True
+            
+        urls_structured_registry.append({
+          "url": url,
+          "safe": not is_url_suspicious,
+          "redirect_chain": [url] if is_url_suspicious else []
+        })
 
     # 🧮 5. THE RISK SCORING WEIGHT ENGINE
     calculated_risk = 0
@@ -151,9 +195,13 @@ def parse_eml(file_bytes: bytes) -> dict:
     recommended_actions = ["Monitor account logs for suspicious activity"]
 
     if header_mismatch:
-        calculated_risk += 25
-        reasons.append({"type": "header_mismatch", "message": "Reply-To address differs from display sender domain."})
+        calculated_risk += 20
+        reasons.append({"type": "spoofed_header", "message": "Reply-To address differs from display sender domain."})
     
+    if return_path_mismatch and return_path_header != "Not Specified":
+        calculated_risk += 25
+        reasons.append({"type": "spoofed_header", "message": f"Critical Mismatch: Return-Path ({return_domain}) does not align with Sender Domain ({sender_domain})."})
+
     if spf_status == "FAIL":
         calculated_risk += 30
         reasons.append({"type": "spf_fail", "message": "SPF validation failed—unauthorized server source."})
@@ -169,10 +217,16 @@ def parse_eml(file_bytes: bytes) -> dict:
         calculated_risk += 25
         reasons.append({"type": "dmarc_fail", "message": "DMARC alignment validation failed completely."})
 
-    # Domain Validation Weight Modifiers
     if dns_metrics["mx_check"].startswith("FAILED"):
         calculated_risk += 25
         reasons.append({"type": "lookalike_domain", "message": "Critical: Sending domain has no valid MX mail servers configured."})
+
+    # Attachment Danger Extensions Modifier
+    dangerous_extensions = ["exe", "bat", "scr", "vbs", "cmd", "lnk", "zip", "rar"]
+    for attach in attachments_discovered:
+        if attach["extension"] in dangerous_extensions:
+            calculated_risk += 30
+            reasons.append({"type": "credential_request", "message": f"Dangerous Attachment Blocked: '{attach['filename']}' uses an executable/compressed vector ({attach['extension'].upper()})."})
 
     lower_text = extracted_text.lower()
     if "lawsuit" in lower_text or "court" in lower_text or "notice" in lower_text:
@@ -203,15 +257,17 @@ def parse_eml(file_bytes: bytes) -> dict:
             "to": email_to,
             "subject": email_subject,
             "reply_to": reply_to,
+            "return_path": return_path_header,
             "sender_domain": sender_domain,
-            "header_mismatch": header_mismatch
+            "header_mismatch": header_mismatch or return_path_mismatch
         },
         "authentication": {
             "spf": spf_status,
             "dkim": dkim_status,
             "dmarc": dmarc_status
         },
-        # 🌐 Injecting your requested real-time network lookup parameters cleanly!
         "dns_intelligence": dns_metrics,
+        "urls_found": urls_structured_registry,
+        "attachments": attachments_discovered,
         "clean_text_content": extracted_text[:1200]
     }

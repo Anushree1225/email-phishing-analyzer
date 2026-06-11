@@ -67,7 +67,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             for reason in eml_analysis['reasons']:
                 print(f"   ⚠️  [{reason['type'].upper()}] - {reason['message']}")
             
-            # 🌐 UPDATED: CORE DNS INTELLIGENCE + SOC ANALYST GUIDANCE IN CMD LINE
+            # 🌐 UPDATED: CORE DNS INTELLIGENCE + ROUTING INFRA IN CMD LINE
             print("-"*60)
             print(" 🌐 LIVE DNS FORENSICS EXTRACTED:")
             dns_info = eml_analysis['dns_intelligence']
@@ -75,27 +75,26 @@ async def analyze_email_file(file: UploadFile = File(...)):
             if dns_info['mx_records']:
                 print(f"      Mapped targets:   {', '.join(dns_info['mx_records'])}")
             
+            print(f"   🎭 HIDDEN ENVELOPE:   {eml_analysis['metadata']['return_path']}") # 🚀 Added!
             print(f"   🔒 DEPLOYED SPF TXT:  {dns_info['spf_record']}")
-            print(f"      🧠 Guidance:       {dns_info['spf_analyst_note']}") # 🚀 Added!
-            
+            print(f"      🧠 Guidance:       {dns_info['spf_analyst_note']}")
             print(f"   🛡️  DMARC POLICY CORE: {dns_info['dmarc_policy']}")
-            print(f"      🧠 Guidance:       {dns_info['dmarc_analyst_note']}") # 🚀 Added!
-
+            print(f"      🧠 Guidance:       {dns_info['dmarc_analyst_note']}")
             # Construct response using the real runtime calculated score matrices!
             return {
                 "risk_score": eml_analysis["risk_score"],
                 "severity": eml_analysis["severity"],
                 "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found."}],
                 "recommended_action": eml_analysis["recommended_action"],
-                "urls_found": [], 
                 "highlighted_content": [], 
                 "scan_id": f"SCAN-{uuid.uuid4().hex[:8].upper()}",
                 "scanned_at": datetime.utcnow().isoformat() + "Z",
                 
-                # 🎯 ADDED KEYS FOR ADVANCED SUB-PANELS
+                # 🎯 UNIVERSAL ARRAYS LINKED DIRECTLY TO FRONTEND LOOPS
+                "urls_found": eml_analysis["urls_found"],       # 🚀 Returns ALL links now!
                 "file_type": "eml", 
                 "dns_intelligence": eml_analysis["dns_intelligence"],
-                "eml_details": eml_analysis 
+                "eml_details": eml_analysis                     # 🚀 Passes down return_path and attachments!
             }
             
         except Exception as e:
