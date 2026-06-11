@@ -12,14 +12,16 @@ def clean_html_tags(html_text: str) -> str:
 
 def check_dns_records(domain: str) -> dict:
     """
-    Queries live global DNS records using dnspython to extract MX configurations,
-    raw SPF policies, and explicit DMARC alignment enforcement structures.
+    Queries live global DNS records and generates tactical SOC analyst interpretations
+    to help junior security responders decipher raw protocol strings.
     """
     dns_report = {
         "mx_check": "NOT FOUND",
         "mx_records": [],
         "spf_record": "NOT FOUND",
-        "dmarc_policy": "NOT FOUND"
+        "spf_analyst_note": "No SPF configuration found. Senders cannot be verified.",
+        "dmarc_policy": "NOT FOUND",
+        "dmarc_analyst_note": "No DMARC policy found. Domain is highly vulnerable to identity spoofing."
     }
     
     if not domain or "." not in domain:
@@ -34,27 +36,45 @@ def check_dns_records(domain: str) -> dict:
     except Exception:
         dns_report["mx_check"] = "FAILED (No Mail Servers Found)"
 
-    # 2. LIVE SPF RECORD LOOKUP (Hunted inside domain TXT strings)
+    # 2. LIVE SPF RECORD LOOKUP & SOC INTERPRETATION
     try:
         txt_answers = dns.resolver.resolve(domain, 'TXT')
         for r in txt_answers:
             txt_string = str(r).strip('"')
             if txt_string.startswith("v=spf1"):
                 dns_report["spf_record"] = txt_string
+                
+                # Evaluate SPF enforcement flags
+                if "-all" in txt_string:
+                    dns_report["spf_analyst_note"] = "Strict Enforcement (-all). Unauthorized servers are strictly rejected by receivers."
+                elif "~all" in txt_string:
+                    dns_report["spf_analyst_note"] = "Relaxed Policy (~all). Softfail configuration; unauthorized mail is flagged but still delivered."
+                elif "?all" in txt_string:
+                    dns_report["spf_analyst_note"] = "Neutral Policy (?all). No policy enforcement; testing mode or unprotected configuration."
+                else:
+                    dns_report["spf_analyst_note"] = "Custom SPF mechanism deployed. Review listed include/ip4 blocks for source alignment."
                 break
     except Exception:
-        dns_report["spf_record"] = "FAILED (No SPF TXT record deployed)"
+        dns_report["spf_analyst_note"] = "FAILED: Domain completely lacks an SPF security record. High spoofing potential."
 
-    # 3. LIVE DMARC POLICY LOOKUP (Hunted at _dmarc.<domain>)
+    # 3. LIVE DMARC POLICY LOOKUP & SOC INTERPRETATION
     try:
         dmarc_answers = dns.resolver.resolve(f"_dmarc.{domain}", 'TXT')
         for r in dmarc_answers:
             txt_string = str(r).strip('"')
             if txt_string.startswith("v=DMARC1"):
                 dns_report["dmarc_policy"] = txt_string
+                
+                # Evaluate DMARC alignment actions
+                if "p=reject" in txt_string:
+                    dns_report["dmarc_analyst_note"] = "Strict Shield (p=reject). Any mail failing SPF/DKIM alignment is completely dropped at destination."
+                elif "p=quarantine" in txt_string:
+                    dns_report["dmarc_analyst_note"] = "Active Isolation (p=quarantine). Mismatched mail is automatically routed directly to Spam folders."
+                elif "p=none" in txt_string:
+                    dns_report["dmarc_analyst_note"] = "Monitoring Only (p=none). Domain owner tracking traffic metrics, but fake emails will still land in targets' inboxes."
                 break
     except Exception:
-        dns_report["dmarc_policy"] = "FAILED (No DMARC record deployed)"
+        dns_report["dmarc_analyst_note"] = "FAILED: No active DMARC alignment record published. Mail clients cannot verify sender authenticity."
 
     return dns_report
 
