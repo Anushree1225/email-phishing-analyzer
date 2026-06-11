@@ -55,17 +55,19 @@ async def analyze_email_file(file: UploadFile = File(...)):
             
             # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
             print("\n" + "="*60)
-            print(" 🛡️  DYNAMIC RISK SCORING EVALUATION COMPLETE")
+            print(" 🛡️   DYNAMIC RISK SCORING EVALUATION COMPLETE")
             print("="*60)
             print(f" FILE:            {filename}")
             print(f" SENDER (FROM):   {eml_analysis['metadata']['from']}")
-            print(f" SENDER DOMAIN:   {eml_analysis['metadata']['sender_domain']}")
-            print(f" SUBJECT:         {eml_analysis['metadata']['subject']}")
-            print(f" CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
+            
+            # ── ⏳ INSERTED NEW DOMAIN AGE TELEMETRY TRACKER HERE ──
+            print(f"   SENDER DOMAIN:   {eml_analysis['metadata']['sender_domain']}")
+            print(f"   ⏳ REGISTRY AGE:  {eml_analysis['metadata']['domain_age']}") # 🚀 Added console hook!
+            print(f"   SUBJECT:         {eml_analysis['metadata']['subject']}")
+            print(f"   CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
+            
             print("-"*60)
             print(f" 🚨 THREAT FINDINGS MAPPED ({len(eml_analysis['reasons'])}):")
-            for reason in eml_analysis['reasons']:
-                print(f"   ⚠️  [{reason['type'].upper()}] - {reason['message']}")
             
             # 🌐 UPDATED: CORE DNS INTELLIGENCE + ROUTING INFRA IN CMD LINE
             print("-"*60)

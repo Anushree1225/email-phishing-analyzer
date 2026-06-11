@@ -3,6 +3,8 @@ from email import policy
 import re
 import dns.resolver  # 🚀 Used for live global DNS queries!
 from email.utils import parseaddr
+import whois         # 🚀 NEW: Used for tracking global domain registration age!
+from datetime import datetime
 
 def clean_html_tags(html_text: str) -> str:
     """Strips HTML formatting tags to extract pure text content for analysis."""
@@ -80,10 +82,40 @@ def check_dns_records(domain: str) -> dict:
     return dns_report
 
 
+def calculate_domain_age_days(domain: str) -> tuple:
+    """
+    Queries global WHOIS registry sockets to track down when the target 
+    sending domain was officially registered. Returns (age_days, tracking_string).
+    """
+    if not domain or "." not in domain or "gmail.com" in domain or "yahoo.com" in domain:
+        return None, "Skipped (Global Consumer Platform)"
+        
+    try:
+        w = whois.whois(domain)
+        creation_date = w.creation_date
+        
+        # WHOIS entries sometimes return an array of dates instead of a single object
+        if isinstance(creation_date, list):
+            creation_date = creation_date[0]
+            
+        if creation_date:
+            age_delta = datetime.now() - creation_date
+            age_days = age_delta.days
+            
+            if age_days > 365:
+                years = round(age_days / 365, 1)
+                return age_days, f"{years} Years Old ({age_days} Days)"
+            return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+            
+    except Exception:
+        pass
+    return None, "Unknown (WHOIS Resolver Failure)"
+
+
 def parse_eml(file_bytes: bytes) -> dict:
     """
     Advanced EML parser that conducts multi-vector heuristic risk calculations,
-    extracts attachments, maps comprehensive URL entities, and targets hidden routing paths.
+    extracts attachments, maps comprehensive URL entities, and evaluates domain age profiles.
     """
     msg = email.message_from_bytes(file_bytes, policy=policy.default)
     
@@ -96,7 +128,7 @@ def parse_eml(file_bytes: bytes) -> dict:
     auth_results_header = msg.get("Authentication-Results", "")
     received_spf_header = msg.get("Received-SPF", "")
     
-    # ── 🎭 TRACE VECTOR 1: HIDDEN RETURN-PATH EXTRACTION ──
+    # ── 🎭 TRACE VECTOR: HIDDEN RETURN-PATH EXTRACTION ──
     return_path_header = msg.get("Return-Path", "").strip("<>")
     if not return_path_header:
         return_path_header = msg.get("Envelope-From", msg.get("X-Return-Path", "Not Specified")).strip("<>")
@@ -113,8 +145,11 @@ def parse_eml(file_bytes: bytes) -> dict:
 
     # 2. Execute Live External DNS Lookup Vector
     dns_metrics = check_dns_records(sender_domain)
+    
+    # ⏳ 3. EXECUTE LIVE WHOIS DOMAIN AGE RECORD LOOKUP
+    domain_age_days, domain_age_string = calculate_domain_age_days(sender_domain)
 
-    # 3. Built-in Transport Authentication Checks
+    # Built-in Transport Authentication Checks
     spf_status = "UNKNOWN"
     combined_spf_target = (received_spf_header + " " + auth_results_header).lower()
     if "spf=pass" in combined_spf_target or "pass (google.com" in combined_spf_target:
@@ -145,7 +180,6 @@ def parse_eml(file_bytes: bytes) -> dict:
         content_type = part.get_content_type()
         content_disposition = str(part.get("Content-Disposition", ""))
         
-        # ── 📁 TRACE VECTOR 2: ATTACHMENT IDENTIFICATION LAYER ──
         if "attachment" in content_disposition or part.get_filename():
             filename = part.get_filename() or "unnamed_payload"
             try:
@@ -166,10 +200,9 @@ def parse_eml(file_bytes: bytes) -> dict:
         elif content_type == "text/html":
             html_body += part.get_payload(decode=True).decode(errors="ignore") or ""
 
-    searchable_html = html_body if html_body.strip() else ""
     extracted_text = plain_body if plain_body.strip() else clean_html_tags(html_body)
 
-    # ── 🔗 TRACE VECTOR 3: UNIVERSAL URL PARSING DECK ──
+    # ── UNIVERSAL URL PARSING DECK ──
     body_source_for_urls = html_body if html_body.strip() else plain_body
     raw_urls = re.findall(r'https?://[^\s<>"\']+', body_source_for_urls)
     urls_structured_registry = []
@@ -221,6 +254,11 @@ def parse_eml(file_bytes: bytes) -> dict:
         calculated_risk += 25
         reasons.append({"type": "lookalike_domain", "message": "Critical: Sending domain has no valid MX mail servers configured."})
 
+    # ⏳ Domain Age Risk Modifier Trigger
+    if domain_age_days is not None and domain_age_days <= 60:
+        calculated_risk += 30
+        reasons.append({"type": "lookalike_domain", "message": f"High Alert: Sending domain is newly registered ({domain_age_string}). Typical burner domain indicator."})
+
     # Attachment Danger Extensions Modifier
     dangerous_extensions = ["exe", "bat", "scr", "vbs", "cmd", "lnk", "zip", "rar"]
     for attach in attachments_discovered:
@@ -259,6 +297,7 @@ def parse_eml(file_bytes: bytes) -> dict:
             "reply_to": reply_to,
             "return_path": return_path_header,
             "sender_domain": sender_domain,
+            "domain_age": domain_age_string, # 🚀 Passed seamlessly to routers!
             "header_mismatch": header_mismatch or return_path_mismatch
         },
         "authentication": {
