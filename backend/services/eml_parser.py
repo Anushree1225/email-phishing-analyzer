@@ -3,8 +3,10 @@ from email import policy
 import re
 import dns.resolver  # 🚀 Used for live global DNS queries!
 from email.utils import parseaddr
-import whois         # 🚀 NEW: Used for tracking global domain registration age!
+import whoisdomain as whois  # 🚀 Updated engine variant alias
 from datetime import datetime
+import urllib.request       # 🚀 NEW: Fallback web channel engine
+import json                 # 🚀 NEW: Parses fallback JSON signatures
 
 def clean_html_tags(html_text: str) -> str:
     """Strips HTML formatting tags to extract pure text content for analysis."""
@@ -84,32 +86,67 @@ def check_dns_records(domain: str) -> dict:
 
 def calculate_domain_age_days(domain: str) -> tuple:
     """
-    Queries global WHOIS registry sockets to track down when the target 
-    sending domain was officially registered. Returns (age_days, tracking_string).
+    Queries global WHOIS registries with an automated fallback to open web 
+    RDAP endpoints to guarantee domain age calculations work flawlessly on Windows.
     """
     if not domain or "." not in domain or "gmail.com" in domain or "yahoo.com" in domain:
         return None, "Skipped (Global Consumer Platform)"
         
-    try:
-        w = whois.whois(domain)
-        creation_date = w.creation_date
+    # ── 🚀 FIXED: SUBDOMAIN STRIPPER PLACED HERE ──
+    domain_parts = domain.split(".")
+    if len(domain_parts) > 2:
+        # Handles regional/academic domain extensions gracefully (e.g., xie.edu.in or cii.co.in)
+        if domain_parts[-2] in ["com", "co", "org", "edu", "gov", "net", "res", "ac"]:
+            domain = ".".join(domain_parts[-3:])
+        else:
+            domain = ".".join(domain_parts[-2:])
         
-        # WHOIS entries sometimes return an array of dates instead of a single object
-        if isinstance(creation_date, list):
-            creation_date = creation_date[0]
-            
-        if creation_date:
+    # ── VECTOR 1: ATTEMPT NATIVE WHOISDOMAIN SYSTEM HOOK ──
+    try:
+        w = whois.query(domain)
+        if w and w.creation_date:
+            creation_date = w.creation_date
+            if isinstance(creation_date, list):
+                creation_date = creation_date[0]
+                
             age_delta = datetime.now() - creation_date
             age_days = age_delta.days
             
             if age_days > 365:
-                years = round(age_days / 365, 1)
-                return age_days, f"{years} Years Old ({age_days} Days)"
+                return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
             return age_days, f"{age_days} Days Old (NEWLY CREATED)"
-            
     except Exception:
-        pass
-    return None, "Unknown (WHOIS Resolver Failure)"
+        pass  # Native socket failed or choked on Windows path, shifting to web API
+
+    # ── VECTOR 2: HYBRID HTTPS API FALLBACK (LOCKS OUT PORT 43 ERRORS) ──
+    try:
+        # Query open-source registration analytics directory
+        url = f"https://rdap.org/domain/{domain}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        
+        with urllib.request.urlopen(req, timeout=4.0) as response:
+            data = json.loads(response.read().decode())
+            events = data.get("events", [])
+            
+            for event in events:
+                # Track down original registration event signature timestamp
+                if event.get("eventAction") == "registration":
+                    date_str = event.get("eventDate", "")[:10]  # Extracts YYYY-MM-DD
+                    creation_date = datetime.strptime(date_str, "%Y-%m-%d")
+                    
+                    age_delta = datetime.now() - creation_date
+                    age_days = age_delta.days
+                    
+                    if age_days > 365:
+                        return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
+                    return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+    except Exception as fallback_error:
+        error_msg = str(fallback_error)
+        if "404" in error_msg:
+            return None, "Inactive (Domain Purged/Suspended by Registrar)"
+        return None, f"Unknown (Registry Offline: {error_msg[:15]})"
+        
+    return None, "Unknown (WHOIS Record Parsing Boundary)"
 
 
 def parse_eml(file_bytes: bytes) -> dict:

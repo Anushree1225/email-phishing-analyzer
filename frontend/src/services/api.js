@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://localhost:8000";
+// 🚀 Clear and explicitly matched base URL endpoint string
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const MOCK_RESPONSE = {
   risk_score: 87,
@@ -59,7 +60,8 @@ export const analyzeEmail = async (payload) => {
     await mockDelay(2800);
     return { ...MOCK_RESPONSE, scanned_at: new Date().toISOString() };
   }
-  const res = await axios.post(`${BASE_URL}/analyze`, payload);
+  // 🚀 FIXED: Pointing cleanly to API_BASE_URL
+  const res = await axios.post(`${API_BASE_URL}/analyze`, payload);
   return res.data;
 };
 
@@ -74,7 +76,9 @@ export const analyzeEmailFile = async (file) => {
   }
   const formData = new FormData();
   formData.append("file", file);
-  const res = await axios.post(`${BASE_URL}/analyze/file`, formData, {
+  
+  // 🚀 FIXED: Pointing cleanly to API_BASE_URL
+  const res = await axios.post(`${API_BASE_URL}/analyze/file`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return res.data;
