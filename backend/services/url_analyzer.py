@@ -45,12 +45,11 @@ def get_root_domain(url: str) -> str:
 def scan_url_with_vt(url: str) -> dict:
     """
     Dispatches a live URL resource context verification request to VirusTotal API v3.
-    Implements dynamic status polling to guarantee background analysis completes before return.
+    Gives the background cloud processing engine proper time to return verified threat counts.
     """
-    # # 🏎️ Step A: Hit Check - Serving cached items instantly
-    # if url in VT_CACHE:
-    #     print(f"[VT CACHE HIT] Serving data instantly for: {url}")
-    #     return VT_CACHE[url]
+    if url in VT_CACHE:
+        print(f"[VT CACHE HIT] Serving data instantly for: {url}")
+        return VT_CACHE[url]
 
     if not VT_API_KEY or VT_API_KEY == "3c2de7d904e8dc62bba5a500a63a84835d5a7a58f6665e0c2e0f695021469fd7":
         return {"status": "Skipped", "details": "API Key Missing", "detections": 0, "total": 0}
@@ -75,20 +74,26 @@ def scan_url_with_vt(url: str) -> dict:
             
             report_endpoint = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
             
-            # ⏳ 🚀 DYNAMIC POLLING LOOP: Wait for up to 4 checking cycles (max 6-7 seconds)
-            for attempt in range(4):
-                time.sleep(1.5)  # Pause between check intervals
+            # ── ⏳ ✅ FIXED POLLING OVERHEAD ──
+            # Give it up to 8 loops of 2.5 seconds (20 seconds max headroom) to let the cloud compile stats
+            for attempt in range(8):
+                time.sleep(2.5)  
                 report_response = requests.get(report_endpoint, headers=headers, timeout=5.0)
                 
                 if report_response.status_code == 200:
-                    report_data = report_response.json().get("data", {})
-                    current_status = report_data.get("attributes", {}).get("status", "")
+                    report_json = report_response.json()
+                    attributes = report_json.get("data", {}).get("attributes", {})
+                    current_status = attributes.get("status", "")
+                    stats = attributes.get("stats", {})
                     
-                    # Once the analysis flag hits completed, break out early and process stats!
-                    if current_status == "completed":
+                    malicious = stats.get("malicious", 0)
+                    suspicious = stats.get("suspicious", 0)
+                    
+                    # 🚀 Early Break condition: Stop waiting if engines populate a hit early, or if status says completed!
+                    if current_status == "completed" or (malicious + suspicious) > 0:
                         break
             
-            # 2. Extract finalized metrics safely
+            # 2. Extract metrics safely
             if report_response.status_code == 200:
                 stats = report_response.json().get("data", {}).get("attributes", {}).get("stats", {})
                 malicious = stats.get("malicious", 0)
@@ -97,7 +102,7 @@ def scan_url_with_vt(url: str) -> dict:
                 
                 total_detections = malicious + suspicious
                 
-                # 🚨 If even 1 security vendor flags it, categorize as Malicious
+                # ── 🚨 ✅ REQUIREMENT 3 FIXED: Even a low flag count (like 7/92) maps strictly to Malicious! ──
                 status_str = "Malicious" if total_detections > 0 else "Clean"
                 
                 result = {
@@ -107,7 +112,7 @@ def scan_url_with_vt(url: str) -> dict:
                     "total": total_engines
                 }
                 
-                # Cache finding results
+                # Save into runtime presentation cache
                 VT_CACHE[url] = result
                 return result
                 

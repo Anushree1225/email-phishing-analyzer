@@ -289,8 +289,9 @@ export default function Dashboard({ dark, toggleTheme }) {
                 { label: "RISK SCORE",     value: `${result.risk_score}/100`,                         color: "#ef4444" },
                 { label: "SEVERITY",       value: result.severity,                                     color: "#ef4444" },
                 { label: "INDICATORS",     value: result.reasons.length,                               color: "#f59e0b" },
-                { label: "DANGER URLS",    value: result.urls_found.filter((u) => !u.safe).length,    color: "#ef4444" },
-                { label: "SCAN ID",        value: result.scan_id,                                      color: dark ? "#64748b" : "#94a3b8" },
+                // ── 🚨 ✅ REQUIREMENT 1 FIXED: Pull pre-computed total from your backend dictionary response packet! ──
+                { label: "DANGER URLS",    value: result?.danger_urls ?? 0,                            color: "#ef4444" },
+                 { label: "SCAN ID",        value: result.scan_id,                                      color: dark ? "#64748b" : "#94a3b8" },
               ].map((s, i) => (
                 <div key={i}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.63rem", letterSpacing: 2, color: dark ? "#475569" : "#94a3b8", marginBottom: "0.2rem" }}>

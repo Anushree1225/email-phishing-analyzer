@@ -261,13 +261,18 @@ def parse_eml(file_bytes: bytes) -> dict:
           "redirect_chain": [url] if is_url_suspicious else []
         })
 
-    # 🎛️ RUN VIRUSTOTAL MODULAR CALL (Decoupled completely from your risk math)
+   # 🎛️ RUN VIRUSTOTAL MODULAR CALL (Decoupled completely from your risk math)
     url_intelligence_report = []
     try:
         url_intelligence_report = analyze_urls(body_source_for_urls)
     except Exception:
         url_intelligence_report = []
 
+    # ── 🚨 ✅ REQUIREMENT 2 FIXED: Pre-compute the flat count token for the ribbon bar ──
+    vt_danger_count = sum(
+        1 for u in url_intelligence_report 
+        if isinstance(u, dict) and str(u.get("status", "")).lower() in ["malicious", "suspicious"]
+    )
     # 🧮 5. THE RISK SCORING WEIGHT ENGINE
     calculated_risk = 0
     reasons = []
@@ -331,10 +336,11 @@ def parse_eml(file_bytes: bytes) -> dict:
 
     return {
         "risk_score": final_risk_score,
-        "threat_score": final_risk_score,      # 🌟 Key copy matching Arpita's component logic
+        "threat_score": final_risk_score,
         "severity": severity,
+        "danger_urls": vt_danger_count,  # 👈 INJECT THIS ROW LAYER HERE
         "reasons": reasons,
-        "threat_indicators": reasons,          # 🌟 Key copy matching Arpita's component logic
+        "threat_indicators": reasons,
         "recommended_action": recommended_actions,
         "metadata": {
             "from": email_from,
@@ -351,14 +357,14 @@ def parse_eml(file_bytes: bytes) -> dict:
             "dkim": dkim_status,
             "dmarc": dmarc_status
         },
-        "security_protocols": {                # 🌟 Key copy matching Arpita's component logic
+        "security_protocols": {
             "spf": spf_status,
             "dkim": dkim_status,
             "dmarc": dmarc_status
         },
         "dns_intelligence": dns_metrics,
         "urls_found": urls_structured_registry,
-        "url_intelligence": url_intelligence_report, # 🌟 PASSING VIRUSTOTAL JSON IN ITS OWN PACKET LAYER
+        "url_intelligence": url_intelligence_report,
         "attachments": attachments_discovered,
         "clean_text_content": extracted_text[:1200]
     }

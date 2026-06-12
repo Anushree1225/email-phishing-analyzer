@@ -35,16 +35,22 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   // 🚀 TEMP DEBUGGER TRACE: Add this line right here!
   console.log("🕵️‍♂️ DEBUG PACKET ARRIVED:", { urlsFound, emlDetails });
   
-  // Read from the advanced whitelisted payload from VirusTotal
-  const intelligentUrls = emlDetails?.url_intelligence || [];
+  // ✅ FIXED: Dual fallback check to handle both nested and unnested API endpoints safely
+  const intelligentUrls = emlDetails?.url_intelligence || emlDetails?.eml_details?.url_intelligence || [];
   
   // State handle for the collapsible verified safe link section
   const [showClean, setShowClean] = useState(false);
 
-  // ── 🧠 UPDATE: Expand filter conditions to aggregate Suspicious status strings ──
-  const maliciousUrls = intelligentUrls.filter(u => u.status === "Malicious" || u.status === "Suspicious");
-  const cleanUrls = intelligentUrls.filter(u => u.status === "Clean");
-
+ // ── ✅ BULLETPROOF MATCHING: Convert status to lowercase before filtering ──
+  const maliciousUrls = intelligentUrls.filter(u => {
+    const status = u.status ? String(u.status).toLowerCase() : "";
+    return status === "malicious" || status === "suspicious";
+  });
+  
+  const cleanUrls = intelligentUrls.filter(u => {
+    const status = u.status ? String(u.status).toLowerCase() : "";
+    return status === "clean" || status === "harmless";
+  });
   // Fallback structural rendering if the backend didn't supply virus total layers yet
   const formatFallback = intelligentUrls.length === 0 && urlsFound?.length > 0;
 
