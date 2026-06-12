@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 /**
  * FindingsList - renders threat indicators, highlighted suspicious content,
  * URL intelligence, advanced EML forensics, and file attachment payloads.
@@ -7,7 +9,7 @@ const ICON_MAP = {
   credential_request: "🔑",
   lookalike_domain:   "🌐",
   sender_verification:"📧",
-  urgent_language:    "⚡",
+  urgent_language:     "⚡",
   suspicious_url:     "🔗",
   spoofed_header:     "🎭",
   legal_trigger:      "⚖️"
@@ -30,6 +32,22 @@ function SectionTitle({ label, dark }) {
 }
 
 export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails }) {
+  // 🚀 TEMP DEBUGGER TRACE: Add this line right here!
+  console.log("🕵️‍♂️ DEBUG PACKET ARRIVED:", { urlsFound, emlDetails });
+  
+  // Read from the advanced whitelisted payload from VirusTotal
+  const intelligentUrls = emlDetails?.url_intelligence || [];
+  
+  // State handle for the collapsible verified safe link section
+  const [showClean, setShowClean] = useState(false);
+
+  // ── 🧠 UPDATE: Expand filter conditions to aggregate Suspicious status strings ──
+  const maliciousUrls = intelligentUrls.filter(u => u.status === "Malicious" || u.status === "Suspicious");
+  const cleanUrls = intelligentUrls.filter(u => u.status === "Clean");
+
+  // Fallback structural rendering if the backend didn't supply virus total layers yet
+  const formatFallback = intelligentUrls.length === 0 && urlsFound?.length > 0;
+
   const cardStyle = {
     background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
     border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
@@ -40,7 +58,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     gap: "1.5rem",
   };
 
-  // Styles for the forensic intelligence data grid
   const tableLabelStyle = {
     padding: "0.6rem 0.75rem",
     fontFamily: "'Space Mono', monospace",
@@ -61,7 +78,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`
   };
 
-  // Helper function to build dynamic neon status pills for the security layer
   const renderAuthBadge = (protocol, status) => {
     const isPass = status === "PASS";
     const isFail = status === "FAIL";
@@ -93,7 +109,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   return (
     <div style={cardStyle}>
 
-      {/* ── 🛡️ EXTRACTION LAYER: ADVANCED EML FORENSICS PANEL (ONLY FOR FILES) ── */}
+      {/* ── 🛡️ EXTRACTION LAYER: ADVANCED EML FORENSICS PANEL ── */}
       {emlDetails && (
         <div style={{
           paddingBottom: "1.25rem",
@@ -103,9 +119,9 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
           <div>
             <SectionTitle label="🔒 Security Protocol Verification" dark={dark} />
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {renderAuthBadge("SPF (Sender Policy)", emlDetails.authentication.spf)}
-              {renderAuthBadge("DKIM (Signature)", emlDetails.authentication.dkim)}
-              {renderAuthBadge("DMARC (Alignment)", emlDetails.authentication.dmarc)}
+              {renderAuthBadge("SPF (Sender Policy)", emlDetails.security_protocols?.spf || emlDetails.authentication?.spf)}
+              {renderAuthBadge("DKIM (Signature)", emlDetails.security_protocols?.dkim || emlDetails.authentication?.dkim)}
+              {renderAuthBadge("DMARC (Alignment)", emlDetails.security_protocols?.dmarc || emlDetails.authentication?.dmarc)}
             </div>
           </div>
 
@@ -125,14 +141,12 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
               <span style={{ color: dark ? "#475569" : "#94a3b8" }}>REPLY-TO:</span> {emlDetails.metadata.reply_to}
             </div>
             
-            {/* 🚀 FIXED: Replaced statement with standard JSX short-circuit logic */}
             {emlDetails.metadata.return_path && (
               <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
                 <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {emlDetails.metadata.return_path}
               </div>
             )}
             
-            {/* ── DYNAMIC DOMAIN AGE SUMMARY LOGIC OVERRIDE ── */}
             {emlDetails.metadata.domain_age && (() => {
               const ageStr = emlDetails.metadata.domain_age;
               const isNew = ageStr.includes("(NEWLY CREATED)");
@@ -157,35 +171,36 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 🚨 THREAT INDICATORS: BRIDGED TO THE TOP FOR OPTIMAL USER CLARITY ── */}
-      <div>
-        <SectionTitle label="⚠ Threat Indicators" dark={dark} />
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {reasons.map((r, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.75rem",
-                padding: "0.7rem 1rem",
-                background: dark ? "rgba(239,68,68,0.06)" : "rgba(239,68,68,0.04)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                borderRadius: 10,
-                fontFamily: "'Space Mono', monospace",
-                fontSize: "0.8rem",
-                color: dark ? "#e2e8f0" : "#1e293b",
-                animation: `slideIn 0.3s ease ${i * 0.07}s both`,
-              }}
-            >
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{ICON_MAP[r.type] || "⚠"}</span>
-              {r.message}
-            </div>
-          ))}
+      {/* ── 🚨 THREAT INDICATORS ── */}
+      {reasons && reasons.length > 0 && (
+        <div>
+          <SectionTitle label="⚠ Threat Indicators" dark={dark} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {reasons.map((r, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.75rem",
+                  padding: "0.7rem 1rem",
+                  background: dark ? "rgba(239,68,68,0.06)" : "rgba(239,68,68,0.04)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  borderRadius: 10,
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "0.8rem",
+                  color: dark ? "#e2e8f0" : "#1e293b",
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{ICON_MAP[r.type] || "⚠"}</span>
+                {r.message}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── 🌐 LIVE DNS FORENSICS GRID PUSHED LOWER FOR TECH EXPERTS ── */}
+      {/* ── 🌐 LIVE DNS FORENSICS GRID ── */}
       {emlDetails && emlDetails.dns_intelligence && (
         <div style={{
           marginTop: "0.25rem",
@@ -264,7 +279,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 📁 ATTACHMENT ANALYTICS MODULE WITH EXPLICIT SAFETY VERIFICATION ── */}
+      {/* ── 📁 ATTACHMENT INVENTORY MODULE ── */}
       {emlDetails && emlDetails.attachments && emlDetails.attachments.length > 0 && (
         <div>
           <SectionTitle label="📎 Attachment Inventory" dark={dark} />
@@ -333,7 +348,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── Highlighted Suspicious Content ── */}
+      {/* ── 🔍 SUSPICIOUS CONTENT LAYER ── */}
       {highlightedContent?.length > 0 && (
         <div>
           <SectionTitle label="🔍 Suspicious Content" dark={dark} />
@@ -360,54 +375,92 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 🔗 URL INTELLIGENCE ── */}
-      {urlsFound?.length > 0 && (
+      {/* ── 🔗 REFACTORED BULLETPROOF URL INTELLIGENCE INTERFACE ── */}
+      {((intelligentUrls && intelligentUrls.length > 0) || (urlsFound && urlsFound.length > 0)) && (
         <div>
-          <SectionTitle label="🔗 URL Intelligence" dark={dark} />
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {urlsFound.map((u, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "0.75rem 1rem",
-                  background: u.safe
-                    ? dark ? "rgba(34,197,94,0.04)" : "rgba(34,197,94,0.02)"
-                    : dark ? "rgba(239,68,68,0.07)" : "rgba(239,68,68,0.04)",
-                  border: `1px solid ${u.safe ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.25)"}`,
-                  borderRadius: 10,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <span style={{ fontSize: 13 }}>{u.safe ? "✅" : "🚫"}</span>
-                  <span style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: "0.75rem",
-                    color: u.safe ? "#22c55e" : "#ef4444",
-                    fontWeight: u.safe ? 500 : 700,
-                    wordBreak: "break-all",
-                  }}>
-                    {u.url}
-                  </span>
-                  {!u.safe && (
-                    <span style={{ 
-                      fontSize: '0.58rem', 
-                      background: 'rgba(239,68,68,0.1)', 
-                      color: '#ef4444', 
-                      padding: '2px 6px', 
-                      borderRadius: 4, 
-                      fontWeight: 700,
-                      fontFamily: 'sans-serif'
-                    }}>
-                      SUSPICIOUS CORE
-                    </span>
-                  )}
-                </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
+            <SectionTitle label="🔗 URL Intelligence" dark={dark} />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            
+            {/* Fallback View Mode: If reading older layout arrays before processing VT data layer */}
+            {formatFallback && urlsFound.map((u, i) => (
+              <div key={i} style={{
+                padding: "0.75rem 1rem",
+                background: u.safe ? (dark ? "rgba(34,197,94,0.04)" : "rgba(34,197,94,0.02)") : (dark ? "rgba(239,68,68,0.07)" : "rgba(239,68,68,0.04)"),
+                border: `1px solid ${u.safe ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.25)"}`,
+                borderRadius: 10, display: "flex", alignItems: "center", gap: "0.6rem"
+              }}>
+                <span style={{ fontSize: 13 }}>{u.safe ? "✅" : "🚫"}</span>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: u.safe ? "#22c55e" : "#ef4444", wordBreak: "break-all" }}>{u.url}</span>
               </div>
             ))}
+
+            {/* 🚨 DROPDOWN A: FLAGGED THREATS (Malicious / Suspicious) */}
+            {maliciousUrls.length > 0 && (
+              <div style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.02)", borderRadius: 12, padding: "0.75rem" }}>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", fontWeight: 700, color: "#ef4444", marginBottom: "0.5rem", letterSpacing: 1 }}>
+                  🚫 FLAGGED THREATS ({maliciousUrls.length})
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  {maliciousUrls.map((item, idx) => (
+                    <div key={idx} style={{ padding: "0.6rem", background: "rgba(0,0,0,0.2)", borderRadius: 8, borderLeft: "3px solid #ef4444", fontSize: "0.72rem" }}>
+                      <div style={{ fontFamily: "'Space Mono', monospace", color: dark ? "#e2e8f0" : "#1e293b", wordBreak: "break-all" }}>{item.url}</div>
+                      <div style={{ fontSize: "0.62rem", color: "#f87171", marginTop: 4, fontFamily: "sans-serif" }}>
+                        ⚠️ Threat Status: {item.details || "Flagged by active security vendors"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 🟢 DROPDOWN B: VERIFIED SAFE LINKS (Collapsible) */}
+            {cleanUrls.length > 0 && (
+              <div style={{ border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`, borderRadius: 12, overflow: "hidden" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowClean(!showClean)}
+                  style={{
+                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 1rem",
+                    background: dark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)", border: "none", cursor: "pointer", outline: "none"
+                  }}
+                >
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", fontWeight: 700, color: "#22c55e", letterSpacing: 1 }}>
+                    🟢 VERIFIED SAFE LINKS ({cleanUrls.length})
+                  </span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "#64748b" }}>{showClean ? "[ CLOSE ]" : "[ EXPAND ]"}</span>
+                </button>
+                
+                {showClean && (
+                  <div style={{ padding: "0.75rem", background: "rgba(0,0,0,0.15)", borderTop: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {cleanUrls.map((item, idx) => (
+                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.6rem", background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: 6, fontSize: "0.7rem", fontFamily: "'Space Mono', monospace", color: dark ? "#94a3b8" : "#475569" }}>
+                        <span style={{ wordBreak: "break-all", maxWidth: "80%" }}>{item.url}</span>
+                        <span style={{ fontSize: "0.58rem", background: "rgba(34,197,94,0.1)", color: "#22c55e", padding: "1px 4px", borderRadius: 3, fontWeight: 700 }}>CLEAN</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 🛡️ IF COMPONENT HAS ZERO USER ACTIONABLE LINKS IN BOTH BUCKETS */}
+            {intelligentUrls.length > 0 && maliciousUrls.length === 0 && cleanUrls.length === 0 && (
+              <div style={{
+                padding: "0.75rem 1rem",
+                background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
+                border: `1px dashed ${dark ? "rgba(56,189,248,0.15)" : "#cbd5e1"}`,
+                borderRadius: 10, fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", color: "#64748b", textAlign: "center"
+              }}>
+                ℹ️ Links processed cleanly. No interface alerts generated.
+              </div>
+            )}
+
           </div>
         </div>
       )}
-
     </div>
   );
 }

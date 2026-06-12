@@ -8,6 +8,7 @@ app = FastAPI(title="Email Phishing Analyzer Engine")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://super-duper-space-fiesta-97469x4xv6wv2x5x9-3000.app.github.dev", # 👈 ADD THIS EXACT STRING HERE
     "https://effective-space-engine-699g7rrqrx67cgp4-3000.app.github.dev", # Your live frontend browser link
     "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev", # Your live backend proxy link
 ]

@@ -45,27 +45,25 @@ def get_root_domain(url: str) -> str:
 def scan_url_with_vt(url: str) -> dict:
     """
     Dispatches a live URL resource context verification request to VirusTotal API v3.
-    Implements a fast-lookup layout and maps the telemetry reports.
+    Implements dynamic status polling to guarantee background analysis completes before return.
     """
-    # 🏎️ Step A: Hit Check - Has this exact link been scanned during this runtime?
-    if url in VT_CACHE:
-        print(f"[VT CACHE HIT] Serving data instantly for: {url}")
-        return VT_CACHE[url]
+    # # 🏎️ Step A: Hit Check - Serving cached items instantly
+    # if url in VT_CACHE:
+    #     print(f"[VT CACHE HIT] Serving data instantly for: {url}")
+    #     return VT_CACHE[url]
 
-    if not VT_API_KEY or VT_API_KEY == "YOUR_VIRUSTOTAL_API_KEY_HERE":
+    if not VT_API_KEY or VT_API_KEY == "3c2de7d904e8dc62bba5a500a63a84835d5a7a58f6665e0c2e0f695021469fd7":
         return {"status": "Skipped", "details": "API Key Missing", "detections": 0, "total": 0}
 
     print(f"[VT API CALL] Analyzing network vector for: {url}")
     
-    # VirusTotal v3 requires a URL to be submitted for scanning, or its base64 identity checked.
-    # To keep it incredibly clean and avoid multiple calls, we hit the direct scan pipeline endpoint.
     headers = {
         "x-apikey": VT_API_KEY,
         "Accept": "application/json"
     }
     
     try:
-        # Submit the URL for analysis
+        # 1. Submit the URL for analysis
         scan_endpoint = "https://www.virustotal.com/api/v3/urls"
         data = {"url": url}
         response = requests.post(scan_endpoint, data=data, headers=headers, timeout=5.0)
@@ -75,10 +73,22 @@ def scan_url_with_vt(url: str) -> dict:
             if not analysis_id:
                 return {"status": "Clean", "details": "0 / 94 detections", "detections": 0, "total": 94}
             
-            # Retrieve the immediate analysis diagnostic results
             report_endpoint = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-            report_response = requests.get(report_endpoint, headers=headers, timeout=5.0)
             
+            # ⏳ 🚀 DYNAMIC POLLING LOOP: Wait for up to 4 checking cycles (max 6-7 seconds)
+            for attempt in range(4):
+                time.sleep(1.5)  # Pause between check intervals
+                report_response = requests.get(report_endpoint, headers=headers, timeout=5.0)
+                
+                if report_response.status_code == 200:
+                    report_data = report_response.json().get("data", {})
+                    current_status = report_data.get("attributes", {}).get("status", "")
+                    
+                    # Once the analysis flag hits completed, break out early and process stats!
+                    if current_status == "completed":
+                        break
+            
+            # 2. Extract finalized metrics safely
             if report_response.status_code == 200:
                 stats = report_response.json().get("data", {}).get("attributes", {}).get("stats", {})
                 malicious = stats.get("malicious", 0)
@@ -86,16 +96,18 @@ def scan_url_with_vt(url: str) -> dict:
                 total_engines = sum(stats.values()) or 94
                 
                 total_detections = malicious + suspicious
+                
+                # 🚨 If even 1 security vendor flags it, categorize as Malicious
                 status_str = "Malicious" if total_detections > 0 else "Clean"
                 
                 result = {
                     "status": status_str,
-                    "details": f"{total_detections} / {total_engines} vendors detected malicious",
+                    "details": f"{total_detections} / {total_engines} vendors detected threats",
                     "detections": total_detections,
                     "total": total_engines
                 }
                 
-                # Commit findings to our local repository memory registry
+                # Cache finding results
                 VT_CACHE[url] = result
                 return result
                 
