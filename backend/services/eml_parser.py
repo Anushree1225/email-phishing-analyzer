@@ -7,6 +7,8 @@ import whoisdomain as whois  # 🚀 Updated engine variant alias
 from datetime import datetime
 import urllib.request       # 🚀 NEW: Fallback web channel engine
 import json                 # 🚀 NEW: Parses fallback JSON signatures
+from services.url_analyzer import analyze_urls
+
 
 def clean_html_tags(html_text: str) -> str:
     """Strips HTML formatting tags to extract pure text content for analysis."""
@@ -259,6 +261,13 @@ def parse_eml(file_bytes: bytes) -> dict:
           "redirect_chain": [url] if is_url_suspicious else []
         })
 
+    # 🎛️ RUN VIRUSTOTAL MODULAR CALL (Decoupled completely from your risk math)
+    url_intelligence_report = []
+    try:
+        url_intelligence_report = analyze_urls(body_source_for_urls)
+    except Exception:
+        url_intelligence_report = []
+
     # 🧮 5. THE RISK SCORING WEIGHT ENGINE
     calculated_risk = 0
     reasons = []
@@ -314,18 +323,18 @@ def parse_eml(file_bytes: bytes) -> dict:
 
     final_risk_score = min(calculated_risk, 100)
     
-    severity = "Low"
-    if final_risk_score >= 70:
-        severity = "High"
+    severity = "High" if final_risk_score >= 70 else "Medium" if final_risk_score >= 35 else "Low"
+    if severity == "High":
         recommended_actions = ["Do not interact with this email", "Delete the email immediately", "Report it to your technical security team"]
-    elif final_risk_score >= 35:
-        severity = "Medium"
+    elif severity == "Medium":
         recommended_actions = ["Exercise extreme caution when clicking any links", "Verify sender identity through an alternative channel"]
 
     return {
         "risk_score": final_risk_score,
+        "threat_score": final_risk_score,      # 🌟 Key copy matching Arpita's component logic
         "severity": severity,
         "reasons": reasons,
+        "threat_indicators": reasons,          # 🌟 Key copy matching Arpita's component logic
         "recommended_action": recommended_actions,
         "metadata": {
             "from": email_from,
@@ -334,7 +343,7 @@ def parse_eml(file_bytes: bytes) -> dict:
             "reply_to": reply_to,
             "return_path": return_path_header,
             "sender_domain": sender_domain,
-            "domain_age": domain_age_string, # 🚀 Passed seamlessly to routers!
+            "domain_age": domain_age_string, 
             "header_mismatch": header_mismatch or return_path_mismatch
         },
         "authentication": {
@@ -342,8 +351,14 @@ def parse_eml(file_bytes: bytes) -> dict:
             "dkim": dkim_status,
             "dmarc": dmarc_status
         },
+        "security_protocols": {                # 🌟 Key copy matching Arpita's component logic
+            "spf": spf_status,
+            "dkim": dkim_status,
+            "dmarc": dmarc_status
+        },
         "dns_intelligence": dns_metrics,
         "urls_found": urls_structured_registry,
+        "url_intelligence": url_intelligence_report, # 🌟 PASSING VIRUSTOTAL JSON IN ITS OWN PACKET LAYER
         "attachments": attachments_discovered,
         "clean_text_content": extracted_text[:1200]
     }
