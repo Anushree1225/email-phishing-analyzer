@@ -53,17 +53,22 @@ async def analyze_email_file(file: UploadFile = File(...)):
             # Parse and execute real dynamic scoring logic on the file content
             eml_analysis = parse_eml(file_bytes)
             
+            # Extract nested fields safely to preserve telemetry print logs without throwing KeyErrors
+            details_inner = eml_analysis.get("eml_details", {})
+            metadata_inner = details_inner.get("metadata", {})
+            dns_info = details_inner.get("dns_intelligence", {})
+            
             # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
             print("\n" + "="*60)
             print(" 🛡️   DYNAMIC RISK SCORING EVALUATION COMPLETE")
             print("="*60)
             print(f" FILE:            {filename}")
-            print(f" SENDER (FROM):   {eml_analysis['metadata']['from']}")
+            print(f" SENDER (FROM):   {metadata_inner.get('from', 'Unknown')}")
             
             # ── ⏳ INSERTED NEW DOMAIN AGE TELEMETRY TRACKER HERE ──
-            print(f"   SENDER DOMAIN:   {eml_analysis['metadata']['sender_domain']}")
-            print(f"   ⏳ REGISTRY AGE:  {eml_analysis['metadata']['domain_age']}") # 🚀 Added console hook!
-            print(f"   SUBJECT:         {eml_analysis['metadata']['subject']}")
+            print(f"   SENDER DOMAIN:   {metadata_inner.get('sender_domain', 'Unknown')}")
+            print(f"   ⏳ REGISTRY AGE:  {metadata_inner.get('domain_age', 'Unknown')}") 
+            print(f"   SUBJECT:         {metadata_inner.get('subject', 'No Subject')}")
             print(f"   CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
             
             print("-"*60)
@@ -72,44 +77,38 @@ async def analyze_email_file(file: UploadFile = File(...)):
             # 🌐 UPDATED: CORE DNS INTELLIGENCE + ROUTING INFRA IN CMD LINE
             print("-"*60)
             print(" 🌐 LIVE DNS FORENSICS EXTRACTED:")
-            dns_info = eml_analysis['dns_intelligence']
-            print(f"   📧 MX ROUTING INFRA:  {dns_info['mx_check']}")
-            if dns_info['mx_records']:
+            print(f"   📧 MX ROUTING INFRA:  {dns_info.get('mx_check', 'NOT FOUND')}")
+            if dns_info.get('mx_records'):
                 print(f"      Mapped targets:   {', '.join(dns_info['mx_records'])}")
             
-            print(f"   🎭 HIDDEN ENVELOPE:   {eml_analysis['metadata']['return_path']}") # 🚀 Added!
-            print(f"   🔒 DEPLOYED SPF TXT:  {dns_info['spf_record']}")
-            print(f"      🧠 Guidance:       {dns_info['spf_analyst_note']}")
-            print(f"   🛡️  DMARC POLICY CORE: {dns_info['dmarc_policy']}")
-            print(f"      🧠 Guidance:       {dns_info['dmarc_analyst_note']}")
-            # Construct response using the real runtime calculated score matrices!
+            print(f"   🎭 HIDDEN ENVELOPE:   {metadata_inner.get('return_path', 'Not Specified')}") 
+            print(f"   🔒 DEPLOYED SPF TXT:  {dns_info.get('spf_record', 'NOT FOUND')}")
+            print(f"      🧠 Guidance:       {dns_info.get('spf_analyst_note', '')}")
+            print(f"   🛡️  DMARC POLICY CORE: {dns_info.get('dmarc_policy', 'NOT FOUND')}")
+            print(f"      🧠 Guidance:       {dns_info.get('dmarc_analyst_note', '')}")
+            
+            # Construct final synced output payload for your Dashboard UI
             return {
                 "risk_score": eml_analysis["risk_score"],
                 "severity": eml_analysis["severity"],
+                "danger_urls": eml_analysis["danger_urls"],  # Pull flat value straight to ribbon
                 "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found."}],
                 "recommended_action": eml_analysis["recommended_action"],
                 "highlighted_content": [], 
-                "scan_id": f"SCAN-{uuid.uuid4().hex[:8].upper()}",
-                "scanned_at": datetime.utcnow().isoformat() + "Z",
+                "scan_id": eml_analysis.get("scan_id", f"SCAN-{uuid.uuid4().hex[:8].upper()}"),
+                "scanned_at": eml_analysis.get("scanned_at", datetime.utcnow().isoformat() + "Z"),
                 
-                # 🎯 UNIVERSAL ARRAYS LINKED DIRECTLY TO FRONTEND LOOPS
-                "urls_found": eml_analysis["urls_found"],       # 🚀 Returns ALL links now!
+                # Universal mapping layout
+                "urls_found": eml_analysis["urls_found"],       
                 "file_type": "eml", 
-                "dns_intelligence": eml_analysis["dns_intelligence"],
-                "eml_details": eml_analysis                     # 🚀 Passes down return_path and attachments!
+                "dns_intelligence": dns_info,
+                "eml_details": details_inner  # Forwarding down clean, verified structural layout block
             }
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()  # Prints the real nested traceback line directly to your console logs
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
-            
-    elif file_extension == "pdf":
-        detected_format_label = "PDF Electronic Document Document"
-        return generate_mock_response(source_type=f"{detected_format_label} ({filename})")
-        
-    elif file_extension in ["png", "jpg", "jpeg"]:
-        detected_format_label = "Image Screenshot Data (OCR Target)"
-        return generate_mock_response(source_type=f"{detected_format_label} ({filename})")
-
 
 # --- CORE OUTPUT RESPONSE MATRIX MATCHING THE FRONTEND LOOK ---
 def generate_mock_response(source_type: str):

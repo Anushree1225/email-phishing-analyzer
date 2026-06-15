@@ -334,37 +334,41 @@ def parse_eml(file_bytes: bytes) -> dict:
     elif severity == "Medium":
         recommended_actions = ["Exercise extreme caution when clicking any links", "Verify sender identity through an alternative channel"]
 
-    return {
+    # Ensure this matches exactly what your main routing response payload parses
+    payload = {
         "risk_score": final_risk_score,
         "threat_score": final_risk_score,
         "severity": severity,
-        "danger_urls": vt_danger_count,  # 👈 INJECT THIS ROW LAYER HERE
+        "danger_urls": vt_danger_count,  # Matches result.danger_urls
         "reasons": reasons,
         "threat_indicators": reasons,
         "recommended_action": recommended_actions,
-        "metadata": {
-            "from": email_from,
-            "to": email_to,
-            "subject": email_subject,
-            "reply_to": reply_to,
-            "return_path": return_path_header,
-            "sender_domain": sender_domain,
-            "domain_age": domain_age_string, 
-            "header_mismatch": header_mismatch or return_path_mismatch
-        },
-        "authentication": {
-            "spf": spf_status,
-            "dkim": dkim_status,
-            "dmarc": dmarc_status
-        },
-        "security_protocols": {
-            "spf": spf_status,
-            "dkim": dkim_status,
-            "dmarc": dmarc_status
-        },
-        "dns_intelligence": dns_metrics,
         "urls_found": urls_structured_registry,
-        "url_intelligence": url_intelligence_report,
-        "attachments": attachments_discovered,
-        "clean_text_content": extracted_text[:1200]
+        "highlighted_content": [], # Ensure fallback array if expected by Dashboard
+        "scanned_at": datetime.now().isoformat(), # Fixes the date parsing error
+        "scan_id": "SCAN-" + sender_domain.split('.')[0].upper()[:8] if sender_domain else "SCAN-UNKNOWN",
+        
+        # ── Grouping this explicitly so FindingsList read layers resolve safely ──
+        "eml_details": {
+            "metadata": {
+                "from": email_from,
+                "to": email_to,
+                "subject": email_subject,
+                "reply_to": reply_to,
+                "return_path": return_path_header,
+                "sender_domain": sender_domain,
+                "domain_age": domain_age_string, 
+                "header_mismatch": header_mismatch or return_path_mismatch
+            },
+            "security_protocols": {
+                "spf": spf_status,
+                "dkim": dkim_status,
+                "dmarc": dmarc_status
+            },
+            "dns_intelligence": dns_metrics,
+            "url_intelligence": url_intelligence_report,
+            "attachments": attachments_discovered,
+            "clean_text_content": extracted_text[:1200]
+        }
     }
+    return payload
