@@ -7,6 +7,8 @@ import uuid
 
 # Import your custom EML parsing engine from the services folder
 from services.eml_parser import parse_eml
+# 🚀 ADDED: Import your specialized PDF intelligence engine 
+from services.pdf_parser import parse_pdf
 
 router = APIRouter()
 
@@ -109,6 +111,61 @@ async def analyze_email_file(file: UploadFile = File(...)):
             import traceback
             traceback.print_exc()  # Prints the real nested traceback line directly to your console logs
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
+
+    # 🚀 NEW ADDITION: DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
+    elif file_extension == "pdf":
+        try:
+            print(f"--- [PDF SCAN] Routing to Specialized Processing Deck ---")
+            
+            # Dispatch the raw file stream arrays to your custom parser module
+            pdf_analysis = parse_pdf(file_bytes)
+            
+            # Extract nested fields safely to preserve terminal telemetry logs
+            details_inner = pdf_analysis.get("eml_details", {})
+            metadata_inner = details_inner.get("metadata", {})
+            dns_info = details_inner.get("dns_intelligence", {})
+            
+            # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
+            print("\n" + "="*60)
+            print(" 📄   DYNAMIC PDF DOCUMENT SCANNING COMPLETE")
+            print("="*60)
+            print(f" FILE:            {filename}")
+            print(f" EXTRACTED FROM:  {metadata_inner.get('from', 'Unknown')}")
+            print(f" TARGET TO:       {metadata_inner.get('to', 'Unknown')}")
+            print(f" SUBJECT HEADER:  {metadata_inner.get('subject', 'No Subject')}")
+            print(f" DYNAMIC RISK:    {pdf_analysis['risk_score']}% ({pdf_analysis['severity']} Severity)")
+            print("-"*60)
+            print(f" 🌐 EMBEDDED URL INTEL SUMMARY:")
+            print(f"    Total Danger Links Tracked: {pdf_analysis['danger_urls']}")
+            print(f"    {dns_info.get('spf_record', '')}")
+            print(f"    {dns_info.get('spf_analyst_note', '')}")
+            print("="*60 + "\n")
+            
+            # Package output matching exactly what FindingsList.jsx looks for
+            return {
+                "risk_score": pdf_analysis["risk_score"],
+                "severity": pdf_analysis["severity"],
+                "danger_urls": pdf_analysis["danger_urls"],
+                "reasons": pdf_analysis["reasons"] if pdf_analysis["reasons"] else [{"type": "clean", "message": "No immediate document anomalies discovered."}],
+                "recommended_action": pdf_analysis["recommended_action"],
+                "highlighted_content": pdf_analysis["highlighted_content"], 
+                "scan_id": pdf_analysis["scan_id"],
+                "scanned_at": pdf_analysis["scanned_at"],
+                "urls_found": pdf_analysis["urls_found"],       
+                "file_type": "pdf", 
+                "dns_intelligence": dns_info,
+                "eml_details": details_inner 
+            }
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"PDF Forensic Engine failed: {str(e)}")
+
+    # Fallback default mock routing for image processing attachments
+    else:
+        return generate_mock_response(source_type=f"Attachment Matrix ({filename})")
+
 
 # --- CORE OUTPUT RESPONSE MATRIX MATCHING THE FRONTEND LOOK ---
 def generate_mock_response(source_type: str):
