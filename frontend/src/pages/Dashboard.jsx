@@ -10,8 +10,8 @@ import ScanProgress from "../components/ScanProgress";
 /**
  * Dashboard - main page
  * Props:
- *   dark         {boolean} - theme flag
- *   toggleTheme  {fn}      - toggle dark/light mode
+ * dark         {boolean} - theme flag
+ * toggleTheme  {fn}      - toggle dark/light mode
  */
 export default function Dashboard({ dark, toggleTheme }) {
   const [tab, setTab]           = useState("paste"); // "paste" | "upload"
@@ -237,6 +237,37 @@ export default function Dashboard({ dark, toggleTheme }) {
         {/* ── RESULTS ── */}
         {result && !scanning && (
           <div style={{ animation: "fadeUp 0.5s ease both" }}>
+            
+            {/* 🚀 ADDED HERE: CONDITIONAL PDF FORENSIC ALERT BANNER CONTAINER */}
+            {result.file_type === "pdf" && (
+              <div style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.72rem",
+                lineHeight: "1.5",
+                padding: "1rem 1.25rem",
+                background: dark ? "rgba(245, 158, 11, 0.05)" : "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: 12,
+                color: dark ? "#fbbf24" : "#b45309",
+                marginBottom: "1.5rem",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.8rem",
+                textAlign: "left"
+              }}>
+                <span style={{ fontSize: "1.1rem", marginTop: "-2px" }}>⚠️</span>
+                <div>
+                  <strong style={{ letterSpacing: "0.5px" }}>FORENSIC CONFIGURATION NOTICE (CONFIDENCE ADJUSTED):</strong>
+                  <br />
+                  Flattened static layout container (.pdf) detected. Because print output streams permanently discard underlying core mail transfer envelopes, real-time cryptographic verification (SPF/DKIM/DMARC server validation signatures) cannot be computed. 
+                  <br />
+                  <span style={{ color: dark ? "#38bdf8" : "#0284c7" }}>
+                    🎯 Action: The intelligence engine has automatically shifted forensic parameters to deep-crawl embedded document object layers, plain-text indicators, and interactive link annotation mappings.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Report header */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -289,9 +320,8 @@ export default function Dashboard({ dark, toggleTheme }) {
                 { label: "RISK SCORE",     value: `${result.risk_score}/100`,                         color: "#ef4444" },
                 { label: "SEVERITY",       value: result.severity,                                     color: "#ef4444" },
                 { label: "INDICATORS",     value: result.reasons.length,                               color: "#f59e0b" },
-                // ── 🚨 ✅ REQUIREMENT 1 FIXED: Pull pre-computed total from your backend dictionary response packet! ──
                 { label: "DANGER URLS",    value: result?.danger_urls ?? 0,                            color: "#ef4444" },
-                 { label: "SCAN ID",        value: result.scan_id,                                      color: dark ? "#64748b" : "#94a3b8" },
+                { label: "SCAN ID",        value: result.scan_id,                                      color: dark ? "#64748b" : "#94a3b8" },
               ].map((s, i) => (
                 <div key={i}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.63rem", letterSpacing: 2, color: dark ? "#475569" : "#94a3b8", marginBottom: "0.2rem" }}>
