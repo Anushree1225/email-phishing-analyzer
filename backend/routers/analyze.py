@@ -112,7 +112,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             traceback.print_exc()  # Prints the real nested traceback line directly to your console logs
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
 
-    # 🚀 NEW ADDITION: DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
+    # 🚀 REAL DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
     elif file_extension == "pdf":
         try:
             print(f"--- [PDF SCAN] Routing to Specialized Processing Deck ---")
@@ -133,57 +133,21 @@ async def analyze_email_file(file: UploadFile = File(...)):
             print(f" EXTRACTED FROM:  {metadata_inner.get('from', 'Unknown')}")
             print(f" TARGET TO:       {metadata_inner.get('to', 'Unknown')}")
             print(f" SUBJECT HEADER:  {metadata_inner.get('subject', 'No Subject')}")
-            print(f" DYNAMIC RISK:    {pdf_analysis['risk_score']}% ({pdf_analysis['severity']} Severity)")
+            print(f" DYNAMIC RISK:    {pdf_analysis.get('risk_score', 0)}% ({pdf_analysis.get('severity', 'Low')} Severity)")
             print("-"*60)
             print(f" 🌐 EMBEDDED URL INTEL SUMMARY:")
-            print(f"    Total Danger Links Tracked: {pdf_analysis['danger_urls']}")
+            print(f"    Total Danger Links Tracked: {pdf_analysis.get('danger_urls', 0)}")
             print(f"    {dns_info.get('spf_record', '')}")
             print(f"    {dns_info.get('spf_analyst_note', '')}")
             print("="*60 + "\n")
             
-            # Package output matching exactly what FindingsList.jsx looks for
-            return {
-            "file_type": "pdf",  # 🚀 CRITICAL: Tell frontend this is a clean flat PDF stream
-            "risk_score": 100,
-            "severity": "High",
-            "scanned_at": "2026-06-15T14:31:56Z",
-            "scan_id": "SCAN-PDF-D40E0E",
-            "danger_urls": 2,
-            "reasons": [
-                {"type": "urgent_language", "message": "Alert: Document utilizes high-pressure administrative urgency triggers..."},
-                {"type": "credential_request", "message": "Alert: Subsurface verification markers detected..."},
-                {"type": "suspicious_url", "message": "Critical Threat: Dynamic analysis engine isolated 2 embedded hyperlinks..."}
-            ],
-            "highlighted_content": [
-                {"text": "Immediate action required or account closure pending", "reason": "Urgency manipulation technique detected"}
-            ],
-            "urls_found": [
-                {"url": "http://www.amtso.org/check-desktop-phishing-page/", "safe": False, "details": "11/92 vendors flagged"},
-                {"url": "http://www.eicar.org/download/eicar.com", "safe": False, "details": "7/92 vendors flagged"}
-            ],
-            # 🚀 NEW BUNDLE: Keep this structured cleanly outside of email keys!
-            "pdf_details": {
-                "metadata": {
-                    "from": '"IT Service Desk" <support-security-alert@external-mail-gateway.com>',
-                    "subject": "CRITICAL: Password Expiring - Action Required Immediately",
-                    "date": "15/06/2026, 14:31:56",
-                    "to": "vermaanushree@gmail.com",
-                    "author": "N/A",
-                    "creator": "Zamzar",
-                    "producer": "Adobe PDF Library Web Toolkit",
-                    "page_count": 1
-                }
-                }
-            }
+            # 🚀 FIXED: Return the real, calculated object dictionary directly to the frontend app!
+            return pdf_analysis
             
         except Exception as e:
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"PDF Forensic Engine failed: {str(e)}")
-
-    # Fallback default mock routing for image processing attachments
-    else:
-        return generate_mock_response(source_type=f"Attachment Matrix ({filename})")
 
 
 # --- CORE OUTPUT RESPONSE MATRIX MATCHING THE FRONTEND LOOK ---

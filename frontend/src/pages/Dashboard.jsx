@@ -23,13 +23,23 @@ export default function Dashboard({ dark, toggleTheme }) {
 
   const handleAnalyze = async () => {
     setError(null);
-    setResult(null);
+    setResult(null); 
 
     if (tab === "paste" && !emailText.trim()) {
       setError("Please paste email content before analyzing.");
       return;
     }
-    if (tab === "upload" && !file) {
+
+    // 🚀 STALE CACHE COUNTER-MEASURE:
+    // If we are in upload mode, look directly at the DOM file input layer 
+    // to guarantee we grab the fresh payload stream, even if state is lagging.
+    let activeFile = file;
+    const fileInput = document.querySelector('input[type="file"]');
+    if (tab === "upload" && fileInput && fileInput.files && fileInput.files[0]) {
+      activeFile = fileInput.files[0];
+    }
+
+    if (tab === "upload" && !activeFile) {
       setError("Please upload an .eml or image file.");
       return;
     }
@@ -39,7 +49,9 @@ export default function Dashboard({ dark, toggleTheme }) {
       const data =
         tab === "paste"
           ? await analyzeEmail({ email_text: emailText })
-          : await analyzeEmailFile(file);
+          : await analyzeEmailFile(activeFile); // Pass the verified live payload reference
+      
+      console.log("🚀 Fresh Backend Packet Payload:", data); 
       setResult(data);
     } catch {
       setError("Analysis failed. Please ensure the backend is running at the configured URL.");
@@ -54,6 +66,9 @@ export default function Dashboard({ dark, toggleTheme }) {
     setError(null);
     setEmailText("");
     setFile(null);
+    // Flush the DOM file field layout directly
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) fileInput.value = "";
   };
 
   // ── shared button styles ──────────────────────────────────────
@@ -64,8 +79,7 @@ export default function Dashboard({ dark, toggleTheme }) {
     padding: "0.55rem 1.2rem",
     borderRadius: 9,
     border: "none",
-    background:
-      tab === id ? "linear-gradient(135deg, #38bdf8, #818cf8)" : "transparent",
+    background: tab === id ? "linear-gradient(135deg, #38bdf8, #818cf8)" : "transparent",
     color: tab === id ? "#fff" : dark ? "#64748b" : "#94a3b8",
     cursor: "pointer",
     transition: "all 0.2s",
@@ -103,7 +117,7 @@ export default function Dashboard({ dark, toggleTheme }) {
             <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: "1rem", color: dark ? "#e2e8f0" : "#0f172a", letterSpacing: 1 }}>
               Email Phishing Analyzer
             </div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", color: dark ? "#38bdf8" : "#0369a1", letterSpacing: 2 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6" + "rem", color: dark ? "#38bdf8" : "#0369a1", letterSpacing: 2 }}>
               CYBERSECURITY · THREAT INTEL
             </div>
           </div>
@@ -199,31 +213,9 @@ export default function Dashboard({ dark, toggleTheme }) {
                 color: "#fff", cursor: "pointer", boxShadow: "0 0 24px rgba(56,189,248,0.3)",
                 transition: "all 0.2s",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 0 36px rgba(56,189,248,0.45)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 0 24px rgba(56,189,248,0.3)"; }}
             >
-              🔍 ANALYZE EMAIL
+              🔍 ANALYZE {tab === "paste" ? "EMAIL TEXT" : "UPLOADED FILE"}
             </button>
-
-            {/* Stats bar */}
-            <div style={{ display: "flex", gap: "1rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
-              {[
-                { label: "Emails Scanned", value: "1.2M+", icon: "📧" },
-                { label: "Threats Detected", value: "847K",  icon: "🚨" },
-                { label: "Accuracy Rate",   value: "98.7%", icon: "🎯" },
-                { label: "Avg Scan Time",   value: "< 3s",  icon: "⚡" },
-              ].map((s, i) => (
-                <div key={i} style={{
-                  flex: "1 1 180px", padding: "1.1rem",
-                  background: dark ? "rgba(15,23,42,0.7)" : "rgba(248,250,252,0.9)",
-                  border: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, borderRadius: 12, textAlign: "center",
-                }}>
-                  <div style={{ fontSize: 24, marginBottom: "0.3rem" }}>{s.icon}</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: "1.1rem", color: dark ? "#38bdf8" : "#0369a1" }}>{s.value}</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.63rem", color: dark ? "#475569" : "#94a3b8", marginTop: "0.2rem", letterSpacing: 1 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -238,7 +230,6 @@ export default function Dashboard({ dark, toggleTheme }) {
         {result && !scanning && (
           <div style={{ animation: "fadeUp 0.5s ease both" }}>
             
-            {/* 🚀 ADDED HERE: CONDITIONAL PDF FORENSIC ALERT BANNER CONTAINER */}
             {result.file_type === "pdf" && (
               <div style={{
                 fontFamily: "'Space Mono', monospace",
@@ -260,10 +251,6 @@ export default function Dashboard({ dark, toggleTheme }) {
                   <strong style={{ letterSpacing: "0.5px" }}>FORENSIC CONFIGURATION NOTICE (CONFIDENCE ADJUSTED):</strong>
                   <br />
                   Flattened static layout container (.pdf) detected. Because print output streams permanently discard underlying core mail transfer envelopes, real-time cryptographic verification (SPF/DKIM/DMARC server validation signatures) cannot be computed. 
-                  <br />
-                  <span style={{ color: dark ? "#38bdf8" : "#0284c7" }}>
-                    🎯 Action: The intelligence engine has automatically shifted forensic parameters to deep-crawl embedded document object layers, plain-text indicators, and interactive link annotation mappings.
-                  </span>
                 </div>
               </div>
             )}
@@ -305,7 +292,8 @@ export default function Dashboard({ dark, toggleTheme }) {
                 reasons={result.reasons}
                 highlightedContent={result.highlighted_content}
                 urlsFound={result.urls_found}
-                emlDetails={result.eml_details} // 👈 Added this to feed the child component
+                emlDetails={result.eml_details}
+                fileType={result.file_type} 
               />
             </div>
 
@@ -317,11 +305,11 @@ export default function Dashboard({ dark, toggleTheme }) {
               display: "flex", alignItems: "center", flexWrap: "wrap", gap: "1.5rem",
             }}>
               {[
-                { label: "RISK SCORE",     value: `${result.risk_score}/100`,                         color: "#ef4444" },
-                { label: "SEVERITY",       value: result.severity,                                     color: "#ef4444" },
-                { label: "INDICATORS",     value: result.reasons.length,                               color: "#f59e0b" },
-                { label: "DANGER URLS",    value: result?.danger_urls ?? 0,                            color: "#ef4444" },
-                { label: "SCAN ID",        value: result.scan_id,                                      color: dark ? "#64748b" : "#94a3b8" },
+                { label: "RISK SCORE",  value: `${result.risk_score ?? 0}/100`,         color: "#ef4444" },
+                { label: "SEVERITY",    value: result.severity || "Low",                color: result.risk_score >= 40 ? "#ef4444" : "#22c55e" },
+                { label: "INDICATORS",  value: (result.reasons || []).filter(r => r.type !== "clean").length, color: "#f59e0b" },
+                { label: "DANGER URLS", value: result.danger_urls ?? 0,                 color: result.danger_urls > 0 ? "#ef4444" : "#22c55e" },
+                { label: "SCAN ID",     value: result.scan_id || "N/A",                 color: dark ? "#64748b" : "#94a3b8" },
               ].map((s, i) => (
                 <div key={i}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.63rem", letterSpacing: 2, color: dark ? "#475569" : "#94a3b8", marginBottom: "0.2rem" }}>
@@ -336,15 +324,6 @@ export default function Dashboard({ dark, toggleTheme }) {
           </div>
         )}
       </main>
-
-      {/* ── Footer ── */}
-      <footer style={{
-        padding: "1.25rem 2rem", borderTop: `1px solid ${dark ? "rgba(56,189,248,0.08)" : "rgba(203,213,225,0.5)"}`,
-        textAlign: "center", fontFamily: "'Space Mono', monospace", fontSize: "0.63rem",
-        letterSpacing: 2, color: dark ? "#334155" : "#cbd5e1",
-      }}>
-        EMAIL PHISHING ANALYZER · CYBERSECURITY THREAT INTELLIGENCE PLATFORM
-      </footer>
     </div>
   );
 }
