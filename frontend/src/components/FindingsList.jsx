@@ -105,32 +105,20 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   const metaSource = emlDetails?.metadata || {};
   const dnsSource = emlDetails?.dns_intelligence || {};
 
-  // Check if active threats are isolated
   const hasThreats = reasons && reasons.length > 0 && reasons[0]?.type !== "clean";
 
-  // 🚀 FULLY DYNAMIC PERCENTAGE EVALUATION LOOP
-  // Gives 90% trust ceiling to clean static blocks, drops to 35% if content is weaponized
-  const computedConfidence = hasThreats ? "35%" : "90%";
+  const computedConfidence = isPdf ? (hasThreats ? "35%" : "90%") : `${100 - (reasons && reasons[0]?.type !== "clean" ? 65 : 0)}%`;
   const confidenceColor = hasThreats ? "#ef4444" : "#22c55e";
 
-  // Clean layout lookups
-  const rawSender = metaSource?.from || "";
-  const dynamicFrom = rawSender.includes("Unknown Origin Profile") && !hasThreats
-    ? "Document Text Stream Object"
-    : rawSender || "Unknown Origin Profile";
-
-  const rawSubject = metaSource?.subject || "";
-  const dynamicSubject = rawSubject.includes("Static Document Attachment Details") && !hasThreats
-    ? "Native Structural Container Scan"
-    : rawSubject || "Static Document Attachment Details";
-
+  const dynamicFrom = metaSource?.from || "Unknown Origin Profile";
+  const dynamicSubject = metaSource?.subject || "Native Structural Container Scan";
   const dynamicTo = metaSource?.to || "Active Endpoint Session Target";
   const dynamicDate = metaSource?.date || "Extracted Layer Metadata Runtime";
 
   return (
     <div style={cardStyle}>
 
-      {/* ── 🔒 BOX 1: DYNAMIC CONFIDENCE SCORE VECTOR (35% IF HIGH RISK, 90% IF SECURE) ── */}
+      {/* ── 🔒 BOX 1: DYNAMIC CONFIDENCE SCORE VECTOR ── */}
       {isPdf ? (
         <div>
           <SectionTitle label="📉 Confidence Level" dark={dark} />
@@ -159,35 +147,41 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 📬 BOX 2: TRANSPATH METADATA ── */}
+      {/* ── 📬 BOX 2: METADATA PANEL (SWAPS LABELS CONDITIONALLY) ── */}
       <div style={{
         padding: "0.9rem",
         background: metaSource?.header_mismatch ? "rgba(239,68,68,0.04)" : dark ? "rgba(30,58,95,0.2)" : "rgba(241,245,249,0.7)",
         border: `1px solid ${metaSource?.header_mismatch ? "rgba(239,68,68,0.2)" : dark ? "#1e3a5f" : "#e2e8f0"}`,
         borderRadius: 12, fontSize: "0.78rem", fontFamily: "'Space Mono', monospace", textAlign: "left"
       }}>
-        <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.4rem" }}>TRANSPATH METADATA</div>
+        <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.4rem" }}>
+          {isPdf ? "📄 DOCUMENT SPECIFICATION METADATA" : "TRANSPATH METADATA"}
+        </div>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>SENDER / FROM:</span> {dynamicFrom}
+          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SENDER:" : "SENDER / FROM:"}</span> {dynamicFrom}
         </div>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>SUBJECT CONTEXT:</span> {dynamicSubject}
+          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SUBJECT:" : "SUBJECT CONTEXT:"}</span> {dynamicSubject}
         </div>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>TIMESTAMP / DATE:</span> {dynamicDate}
+          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "PRINT / CAPTURE DATE:" : "TIMESTAMP / DATE:"}</span> {dynamicDate}
         </div>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RECIPIENT / TO:</span> {dynamicTo}
+          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "INTENDED RECIPIENT:" : "RECIPIENT / TO:"}</span> {dynamicTo}
         </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {isPdf ? "N/A (Flattened Print File Data)" : metaSource?.return_path || "N/A"}
-        </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>DOMAIN AGE:</span>{' '}
-          <span style={{ color: isPdf ? "#22c55e" : metaSource?.domain_age?.includes("(NEWLY CREATED)") ? "#f59e0b" : "#22c55e" }}>
-            {isPdf ? "Static Stream Document Block" : metaSource?.domain_age || "Unknown"}
-          </span>
-        </div>
+        {!isPdf && (
+          <>
+            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {metaSource?.return_path || "N/A"}
+            </div>
+            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>DOMAIN AGE:</span>{' '}
+              <span style={{ color: metaSource?.domain_age?.includes("(NEWLY CREATED)") ? "#f59e0b" : "#22c55e" }}>
+                {metaSource?.domain_age || "Unknown"}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── ⚠ BOX 3: THREAT INDICATORS ROW ── */}
@@ -210,7 +204,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 🌐 BOX 4: TECHNICAL FINDINGS & DOCUMENT SPECS ── */}
+      {/* ── ⚙️ BOX 4: TECHNICAL EXTRACTIONS (SWAPS CONFIGURATION CONDITIONALLY) ── */}
       {dnsSource && (
         <div style={{
           marginTop: "0.25rem", padding: "1rem 1.25rem",
@@ -219,7 +213,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
           textAlign: "left"
         }}>
           <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.6rem", fontFamily: "'Space Mono', monospace" }}>
-            {isPdf ? "⚙️ TECHNICAL FINDINGS & DOCUMENT SPECS" : "NETWORK RESOLVER INTELLIGENCE"}
+            {isPdf ? "⚙️ ARTIFACT FORENSICS & CONTAINER METADATA" : "NETWORK RESOLVER INTELLIGENCE"}
           </div>
           
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -227,28 +221,23 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
               {isPdf ? (
                 <>
                   <tr>
-                    <td style={tableLabelStyle}>TARGET DOMAIN</td>
+                    <td style={tableLabelStyle}>SENDER DOMAIN SCOPE</td>
                     <td style={tableValueStyle}><strong style={{ color: dark ? "#38bdf8" : "#0369a1" }}>{metaSource?.sender_domain || "Extracted Layout Scope"}</strong></td>
                   </tr>
                   <tr>
-                    <td style={tableLabelStyle}>MX CHECK STATUS</td>
-                    <td style={{ ...tableValueStyle, color: "#22c55e", fontWeight: 600 }}>{dnsSource?.mx_check || "VALID COMPLETE"}</td>
+                    <td style={tableLabelStyle}>CONTAINER FORMAT</td>
+                    <td style={tableValueStyle}>Adobe PDF Portable Asset (Static Print)</td>
                   </tr>
                   <tr>
-                    <td style={tableLabelStyle}>SPF RECORD</td>
-                    <td style={tableValueStyle}>
-                      <div style={{ color: "#22c55e", fontSize: "0.68rem" }}>{dnsSource?.spf_record || "File Format: Adobe PDF Container"}</div>
-                      <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
-                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Analyst Guidance:</span> Total Structural Pages Processed: {dnsSource?.page_count || 1} | Layout Content Layer Scan Verified.
-                      </div>
-                    </td>
+                    <td style={tableLabelStyle}>TOTAL VISUAL PAGES</td>
+                    <td style={tableValueStyle}>{dnsSource?.page_count || 1} Page(s) processed</td>
                   </tr>
                   <tr>
-                    <td style={tableLabelStyle}>DMARC POLICY</td>
+                    <td style={tableLabelStyle}>METADATA CREATOR STAMP</td>
                     <td style={tableValueStyle}>
-                      <div style={{ color: "#22c55e", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy || "Container Serialization Registry"}</div>
+                      <div style={{ color: "#38bdf8", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy || "N/A"}</div>
                       <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
-                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Analyst Guidance:</span> Embedded hyperlink vector tracking trees verified 100% safe.
+                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
                       </div>
                     </td>
                   </tr>
@@ -281,8 +270,8 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER (EML TRAFFIC ONLY) ── */}
-      {!isPdf && emlDetails?.attachments && emlDetails.attachments.length > 0 && (
+      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER ── */}
+      {emlDetails?.attachments && emlDetails.attachments.length > 0 && (
         <div style={{ textAlign: "left" }}>
           <SectionTitle label="📎 Attachment Inventory" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>

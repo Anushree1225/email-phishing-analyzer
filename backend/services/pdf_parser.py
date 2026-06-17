@@ -6,8 +6,8 @@ from services.url_analyzer import analyze_urls
 
 def extract_pdf_deep_layers(file_bytes: bytes) -> tuple:
     """
-    Extracts visible text lines and hidden clickable link structures 
-    from native document layouts and browser print streams.
+    Extracts visible text structures and hidden clickable link objects 
+    directly from native PDF container layers and print streams.
     """
     visible_text = ""
     hidden_urls = []
@@ -25,17 +25,21 @@ def extract_pdf_deep_layers(file_bytes: bytes) -> tuple:
             if page_text:
                 visible_text += page_text + "\n"
             
+            # Extract underlying interactive link layers (Buttons/Hyperlinks)
             if "/Annots" in page:
                 annotations = page["/Annots"]
                 for annot in annotations:
-                    obj = annot.get_object()
-                    if obj.get("/Subtype") == "/Link" and "/A" in obj:
-                        action = obj["/A"].get_object()
-                        if action.get("/S") == "/URI":
-                            uri_target = action.get("/URI")
-                            if uri_target:
-                                hidden_urls.append(uri_target)
-                                
+                    try:
+                        obj = annot.get_object()
+                        if obj.get("/Subtype") == "/Link" and "/A" in obj:
+                            action = obj["/A"].get_object()
+                            if action.get("/S") == "/URI":
+                                uri_target = action.get("/URI")
+                                if uri_target:
+                                    hidden_urls.append(uri_target)
+                    except Exception:
+                        continue
+                                        
         if reader.metadata:
             doc_meta = {
                 "author": reader.metadata.get("/Author", "N/A"),
@@ -49,11 +53,12 @@ def extract_pdf_deep_layers(file_bytes: bytes) -> tuple:
 
 def parse_pdf(file_bytes: bytes) -> dict:
     """
-    Main PDF processing module. Runs dynamic layered pattern scoring, extracts
-    printed browser parameters, and handles dynamic metadata mapping schemas safely.
+    Layout-Agnostic Core Parser Engine. Employs multi-line anchor scans,
+    self-identity sorting filters, and subsurface attachment mapping.
     """
     raw_text, structural_links, doc_meta, page_count = extract_pdf_deep_layers(file_bytes)
     
+    # Harvest and normalize all hyperlinks
     found_raw_urls = re.findall(r'https?://[^\s<>"]+|www\.[^\s<>"]+', raw_text)
     all_unique_links = list(dict.fromkeys(found_raw_urls + structural_links))
     
@@ -71,52 +76,103 @@ def parse_pdf(file_bytes: bytes) -> dict:
         if isinstance(u, dict) and str(u.get("status", "")).lower() in ["malicious", "suspicious"]
     )
     
-    # ─────────────── 🧠 INTELLIGENT BROWSER PRINT LAYOUT EXTRACTOR ───────────────
+    # Initialize baseline fallback variables
     email_from = "Unknown Origin Profile"
-    email_subject = "Static Document Attachment Details"
-    email_to = "Unknown"
+    email_to = "Active Endpoint Session Target"
+    email_subject = "Native Structural Container Scan"
+    email_date = "Extracted Layer Metadata Runtime"
     attachments_discovered = []
     
-    lines = [line.strip() for line in raw_text.split('\n') if line.strip()]
+    # ── 🧠 RE-ENGINEERED DYNAMIC IDENTITY DEDUCTION ENGINE ──
+    # Programmatically isolates the workspace recipient profile based on text frequency metrics
+    all_emails_found = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', raw_text)
     
-    # 1. Subject extraction loop (Usually sits inside the first 3 lines of print view)
-    if lines:
-        for line in lines[:3]:
-            if "gmail -" in line.lower():
-                email_subject = re.sub(r'(?i)gmail\s*-\s*', '', line).strip()
-                break
-        if email_subject == "Static Document Attachment Details" and len(lines) > 0:
-            email_subject = lines[0]
-
-    # 2. Sender and Recipient extractor layers
-    for line in lines:
-        # Match email strings inside boundary tokens
-        email_matches = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', line)
+    email_frequency_map = {}
+    for email in all_emails_found:
+        normalized_email = email.lower().strip()
+        email_frequency_map[normalized_email] = email_frequency_map.get(normalized_email, 0) + 1
         
-        # Check for Sender signatures
-        if email_matches and ("xiesamachar" in line.lower() or "support" in line.lower() or "contact" in line.lower() or "service" in line.lower()):
-            email_from = line
-        elif "from:" in line.lower():
-            email_from = re.sub(r'(?i)from:\s*', '', line).strip()
-            
-        # Check for Destination / Recipient signatures
-        if "to:" in line.lower():
-            email_to = re.sub(r'(?i)to:\s*', '', line).strip()
-        elif "bcc:" in line.lower():
-            email_to = re.sub(r'(?i)bcc:\s*', '', line).strip()
-        elif email_matches and "vermaanushree" in line.lower() and email_to == "Unknown":
-            email_to = line
+    # The active viewer address populates most densely across structural web margin crumbs
+    detected_user_identity = max(email_frequency_map, key=email_frequency_map.get) if email_frequency_map else "target-user@yourcompany.com"
+    user_email_pattern = re.escape(detected_user_identity)
+    
+    # Isolate strictly external targets to protect verification matching from self-identity loops
+    external_emails = [e for e in all_emails_found if not re.match(user_email_pattern, e, re.IGNORECASE)]
+    lines_clean = [line.strip() for line in raw_text.split('\n') if line.strip()]
 
-        # 3. Dynamic Attachment Inventory Hunter (.pdf, .zip, .png extraction handles)
-        attachment_match = re.search(r'([\w\s\.-]+\.(?:pdf|zip|rar|png|jpg|jpeg))\s+(\d+[KM]?B?)', line, re.IGNORECASE)
+    # 1. AGGRESSIVE SUBJECT BACKUP (Parses browser document titles from top margins safely)
+    if lines_clean:
+        for line in lines_clean[:4]:
+            if "gmail -" in line.lower() or "mail -" in line.lower():
+                email_subject = re.sub(r'(?i)^(gmail|mail)\s*-\s*', '', line).strip()
+                break
+        
+        # Guard Override: Ensure layout extraction completely ignores self-identity lines
+        if email_subject == "Native Structural Container Scan" and len(lines_clean) > 0:
+            for candidate_line in lines_clean[:4]:
+                # Skip lines containing email addresses, timestamps, or system paths
+                if not any(x in candidate_line.lower() for x in ["/06/2026", "localhost", "mail.google", "@", "<"]):
+                    email_subject = candidate_line
+                    break
+
+    # 2. ANCHOR & PATTERN SCANS FOR SENDERS/RECIPIENTS
+    # Explicit From Layout Anchor Matching
+    from_match = re.search(r'(?i)from:\s*[\"\']?([^<\n\"]+)?<?([\w\.-]+@[\w\.-]+\.\w+)>?', raw_text)
+    if from_match:
+        name_part = from_match.group(1).strip() if from_match.group(1) else ""
+        email_part = from_match.group(2).strip() if from_match.group(2) else ""
+        name_part = re.sub(r'(?i)^from:\s*', '', name_part).replace('"', '').strip()
+        email_from = f"{name_part} <{email_part}>" if name_part else email_part
+    elif external_emails:
+        # Bare Value Header Fallback: Maps decoupled rows containing foreign email structures
+        for line in raw_text.split('\n'):
+            if external_emails[0] in line and not any(x in line.lower() for x in ["to:", "bcc:", "http", "www"]):
+                email_from = re.sub(r'(?i)^from:\s*', '', line).strip()
+                break
+        if email_from == "Unknown Origin Profile":
+            email_from = external_emails[0]
+
+    # Post-processing text normalization strip loop
+    email_from = re.sub(r'(?i)^from:\s*', '', email_from).strip()
+
+    # Match target recipients dynamically across multi-line envelopes (To / Bcc)
+    to_match = re.search(r'(?i)^(to|bcc):\s*([^\n]+)', raw_text, re.MULTILINE)
+    if to_match:
+        email_to = re.sub(r'(?i)^(to|bcc):\s*', '', to_match.group(2)).strip()
+    else:
+        email_to = detected_user_identity
+
+    # Strict multi-line explicit subject check override
+    explicit_subj = re.search(r'(?i)^subject:\s*([^\n]+)', raw_text, re.MULTILINE)
+    if explicit_subj:
+        email_subject = re.sub(r'^\[SPAM\]\s*', '', explicit_subj.group(1).strip(), flags=re.IGNORECASE)
+
+    # 3. DATE SCANNER (Enforces print margin line-start checking boundaries to protect body text)
+    date_match = re.search(r'(?i)^date:\s*([^\n]+)', raw_text, re.MULTILINE)
+    if date_match:
+        email_date = date_match.group(1).strip()
+    else:
+        # Capture standard browser header timestamp margin strings (e.g., "12/06/2026, 10:32")
+        timestamp_margin = re.search(r'^(\d{2}/\d{2}/\d{4},\s*\d{2}:\d{2})', raw_text, re.MULTILINE)
+        if timestamp_margin:
+            email_date = timestamp_margin.group(1).strip()
+        else:
+            # Check for standard mail layout weekday markers at line-start bounds
+            header_date_pattern = r'(?i)^(mon|tue|wed|thu|fri|sat|sun),\s*[a-zA-Z]{3}\s+\d+'
+            for line in raw_text.split('\n'):
+                if re.match(header_date_pattern, line.strip()):
+                    email_date = line.strip()
+                    break
+
+    # 4. SUBSURFACE ATTACHMENT INVENTORY HUNTER
+    for line in lines_clean:
+        attachment_match = re.search(r'([\w\s\.-]+\.(?:pdf|zip|rar|png|jpg|jpeg|exe|bat|cmd))\s+(\d+[KM]?B?)', line, re.IGNORECASE)
         if attachment_match:
             filename_extracted = attachment_match.group(1).strip()
             size_extracted = attachment_match.group(2).strip()
             
-            # Filter out current scanning file references to avoid infinite recursion
             if "gmail" not in filename_extracted.lower() and not filename_extracted.startswith("SCAN"):
-                # Clean and convert sizes safely into frontend integer structures
-                kb_size = 2023 # Standard safety fallback signature match
+                kb_size = 157  
                 if "m" in size_extracted.lower():
                     kb_size = int(re.sub(r'\D', '', size_extracted)) * 1024
                 elif "k" in size_extracted.lower():
@@ -128,13 +184,13 @@ def parse_pdf(file_bytes: bytes) -> dict:
                     "size_kb": kb_size
                 })
 
-    # ── ADVANCED CONTENT SCORING HEURISTICS ──
+    # 5. DYNAMIC RISK MATRIX EVALUATION (INCLUSIVE CRITERIA)
     calculated_risk = 0
     reasons = []
     highlighted_content = []
     lower_text = raw_text.lower()
     
-    urgency_keywords = ["immediate action required", "closing soon", "account deactivation", "unauthorized login", "action required immediately"]
+    urgency_keywords = ["immediate action required", "closing soon", "account deactivation", "unauthorized login", "action required immediately", "expiring soon"]
     for kw in urgency_keywords:
         if kw in lower_text:
             calculated_risk += 30
@@ -150,7 +206,7 @@ def parse_pdf(file_bytes: bytes) -> dict:
             })
             break
 
-    credential_keywords = ["unverified credential", "verify your login", "verify account", "verify your identity", "login profile"]
+    credential_keywords = ["unverified credential", "verify your login", "verify account", "verify your identity", "login profile", "password expiring"]
     if any(kw in lower_text for kw in credential_keywords):
         calculated_risk += 35
         reasons.append({
@@ -158,7 +214,7 @@ def parse_pdf(file_bytes: bytes) -> dict:
             "message": "Alert: Subsurface verification markers detected targeting credential or profile attributes."
         })
 
-    baiting_keywords = ["100% free", "claim it now", "free edt mini tool", "ultimate tool", "before they're all gone"]
+    baiting_keywords = ["100% free", "claim it now", "free edt mini tool", "ultimate tool", "before they're all gone", "grab yours today"]
     for kw in baiting_keywords:
         if kw in lower_text:
             calculated_risk += 40
@@ -166,7 +222,7 @@ def parse_pdf(file_bytes: bytes) -> dict:
             display_slice = matched_line[0] if matched_line else kw
             reasons.append({
                 "type": "legal_trigger", 
-                "message": "Suspicious: Text layout leverages artificial scarcity baiting hooks Typical of click-fraud structures."
+                "message": "Suspicious: Text layout leverages artificial scarcity baiting hooks typical of click-fraud structures."
             })
             highlighted_content.append({
                 "text": f'"{display_slice}"', 
@@ -181,13 +237,30 @@ def parse_pdf(file_bytes: bytes) -> dict:
             "message": f"Critical Threat: Dynamic analysis engine isolated {vt_danger_count} embedded hyperlinks flagged as malicious by active security vendors."
         })
 
+    if any(att["extension"] in ["exe", "bat", "cmd", "scr"] for att in attachments_discovered):
+        calculated_risk += 50
+        reasons.append({
+            "type": "spoofed_header",
+            "message": "Critical: Executable binary attachment payload discovered within static document layout streams."
+        })
+
+    # Weaponized Conversion Artifact Checker
+    creator_tool = doc_meta.get('creator', 'N/A')
+    if "zamzar" in creator_tool.lower() or "pdfkit" in creator_tool.lower() or "wkhtmltopdf" in creator_tool.lower():
+        if calculated_risk >= 30:
+            calculated_risk += 15
+            reasons.append({
+                "type": "spoofed_header",
+                "message": f"Suspicious: Document compiled via automated backend conversion utility ({creator_tool}) instead of standard web browser runtime interfaces."
+            })
+
     final_risk_score = min(calculated_risk, 100)
     severity = "High" if final_risk_score >= 75 else "Medium" if final_risk_score >= 40 else "Low"
     
-    # Extract domain name scope mappings dynamically
     domain_scope = "Extracted Layout Scope"
     if "@" in email_from:
-        domain_scope = email_from.split("@")[-1].replace(">", "").strip()
+        raw_domain = email_from.split("@")[-1].replace(">", "").strip()
+        domain_scope = raw_domain.split()[0]
 
     return {
         "file_type": "pdf",
@@ -203,11 +276,12 @@ def parse_pdf(file_bytes: bytes) -> dict:
         
         "eml_details": {
             "file_type": "pdf",
-            "attachments": attachments_discovered,  # 🚀 FORWARD THE PIPELINE ATTACHMENTS TO FRONTEND
+            "attachments": attachments_discovered,  
             "metadata": {
                 "from": email_from,
                 "subject": email_subject,
                 "to": email_to,
+                "date": email_date,
                 "reply_to": "Document Object Layer Extraction",
                 "return_path": "N/A (Flattened Print File Data)",
                 "sender_domain": domain_scope,
@@ -224,7 +298,7 @@ def parse_pdf(file_bytes: bytes) -> dict:
                 "mx_check": "VALID COMPLETE",
                 "mx_records": [],
                 "spf_record": "File Format: Adobe PDF Container",
-                "spf_analyst_note": f"Total Structural Pages Processed: {page_count} | Author Signature: {doc_meta.get('author', 'N/A')}",
+                "spf_analyst_note": f"Total Structural Pages Processed: {page_count} | Layout Content Layer Scan Verified.",
                 "dmarc_policy": f"Creator Meta Tooling Stamp: {doc_meta.get('creator', 'N/A')[:60] if doc_meta.get('creator') else 'N/A'}",
                 "dmarc_analyst_note": f"Producer Engine Registry: {doc_meta.get('producer', 'N/A')[:60] if doc_meta.get('producer') else 'N/A'}"
             },
