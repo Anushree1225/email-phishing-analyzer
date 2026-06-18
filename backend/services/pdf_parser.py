@@ -81,7 +81,6 @@ def parse_pdf(file_bytes: bytes) -> dict:
     email_bcc = ""
 
     attachments_discovered = []
-
     lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
 
     # 1. PASS 1: Standard Email Header Detection
@@ -105,46 +104,42 @@ def parse_pdf(file_bytes: bytes) -> dict:
     for line in lines[:20]:
         if "gmail -" in line.lower():
             if email_subject == "Static Document Attachment Details":
-                email_subject = re.sub(r'(?i)gmail\s*-\s*', '', line).strip()
+                extracted_title = re.sub(r'(?i)gmail\s*-\s*', '', line).strip()
+                extracted_title = re.sub(r'\d{1,2}/\d{1,2}/\d{4},?\s+\d{1,2}:\d{2}(?:\s*[AP]M)?', '', extracted_title)
+                extracted_title = re.sub(r'https?://[^\s<>"]+', '', extracted_title)
+                email_subject = extracted_title.strip(" -:|")
             break
 
-    # Gather unique emails in the upper header block area
-    found_emails = []
-    for line in lines[:20]:
+    # ── UNIFIED EXTRACTOR: SENDER & RECIPIENT ROLES ──
+    # Expanded processing deck window to line index 60 to protect against static page shifts
+    all_extracted_emails = []
+    for line in lines[:60]:
         matches = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', line)
         for email in matches:
-            if email not in found_emails:
-                found_emails.append((email, line))
+            if email not in [e[0] for e in all_extracted_emails]:
+                all_extracted_emails.append((email, line))
 
-    if found_emails:
-        # Separate external sender handles from the target reviewer profile
-        external_profiles = [pair for pair in found_emails if "vermaanushree" not in pair[0].lower()]
-        target_profiles = [pair for pair in found_emails if "vermaanushree" in pair[0].lower()]
+    if all_extracted_emails:
+        # Dynamic separation based on identity footprint strings
+        external_actors = [pair for pair in all_extracted_emails if "vermaanushree" not in pair[0].lower()]
+        user_profile = [pair for pair in all_extracted_emails if "vermaanushree" in pair[0].lower()]
 
-        if external_profiles:
-            email_from = external_profiles[0][1]
+        # Role 1: Assign Origin Sender to the first external entity found
+        if external_actors:
+            email_from = external_actors[0][1]
         elif email_from == "Unknown Origin Profile":
-            email_from = found_emails[0][1]
+            email_from = all_extracted_emails[0][1]
 
-        if target_profiles:
-            explicit_routing = [pair for pair in target_profiles if "to:" in pair[1].lower() or "bcc:" in pair[1].lower()]
-            if explicit_routing:
-                email_to = explicit_routing[0][1]
+        # Role 2: Assign Recipient Target
+        if user_profile:
+            # Prioritize layout strings containing direction tags
+            explicit_to = [pair for pair in user_profile if any(prefix in pair[1].lower() for prefix in ["to:", "bcc:", "cc:"])]
+            if explicit_to:
+                email_to = explicit_to[0][1]
             else:
-                email_to = target_profiles[0][1]
-        elif email_to == "Unknown" and len(found_emails) > 1:
-            email_to = found_emails[1][1]
-
-    # 3. PASS 3: Generic Sender Recovery
-    if email_from == "Unknown Origin Profile":
-        for line in lines[:75]:
-            if "@" not in line:
-                continue
-            lower = line.lower()
-            if lower.startswith(("to:", "cc:", "bcc:")):
-                continue
-            email_from = line
-            break
+                email_to = user_profile[0][1]
+        elif email_to == "Unknown" and len(all_extracted_emails) > 1:
+            email_to = all_extracted_emails[1][1]
 
     # 4. PASS 4: Subject Recovery Fallback
     if email_subject == "Static Document Attachment Details":
@@ -158,41 +153,51 @@ def parse_pdf(file_bytes: bytes) -> dict:
                 email_subject = line
                 break
 
-    # 5. PASS 5: Recipient Recovery Fallback
-    if email_to == "Unknown":
-        for line in lines:
+    # 5. PASS 5: Recipient Recovery Fallback & "to me" Normalization
+    if email_to == "Unknown" or email_to.lower() == "me" or email_to.lower() == "to me":
+        for line in lines[:30]:
             lower = line.lower()
-            if lower.startswith("to:"):
+            if lower.startswith("to:") and "me" not in lower:
                 email_to = re.sub(r'(?i)^to:\s*', '', line).strip()
                 break
+        if (email_to == "Unknown" or email_to.lower() in ["me", "to me"]) and 'user_profile' in locals() and user_profile:
+            email_to = f"To: Anushree Verma <{user_profile[0][0]}>"
 
     if email_to == "Unknown" and email_bcc:
         email_to = email_bcc
 
-    # 🔍 RELAXED TIMESTAMP PARSER WITH SPACE-AGNOSTIC BOUNDS
-    # Explicitly handles broken spacing tokens like "Thu, Jun 1 1, 2026 at 12:19 PM" safely
-    timestamp_pattern = r'((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s+[A-Za-z]{3}\s+\d+(?:\s+\d+)?,\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM))'
+    # 🔍 CLEANUP FOOTPRINT REGEX NOISE IN SUBJECT FIELD
+    email_subject = re.sub(r'https?://[^\s<>"]+', '', email_subject)
+    email_subject = re.sub(r'\d{1,2}/\d{1,2}/\d{4},?\s+\d{1,2}:\d{2}(?:\s*[AP]M)?', '', email_subject)
+    email_subject = re.sub(r'\b\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\b', '', email_subject)
+    email_subject = re.sub(r'\s+', ' ', email_subject).strip(" -:|")
+    
+    if not email_subject or email_subject == "":
+        email_subject = "Static Document Attachment Details"
+
+   # 🔍 RELAXED TIMESTAMP PARSER WITH SPACE-AGNOSTIC BOUNDS
+    # Explicitly handles multiple spaces, irregular layout shifts, and stuttered time tokens (e.g., '1 1:44 AM')
+    timestamp_pattern = r'((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s+[A-Za-z]{3}\s+\d+\s*,\s+\d{4}\s+at\s+\d{1,2}\s*\d{1,2}:\d{2}\s*(?:AM|PM))'
     timestamp_match = re.search(timestamp_pattern, email_from)
     
     if timestamp_match:
         email_date = timestamp_match.group(1).strip()
-        # Remove the extracted date tail string from the Sender layout variable
+        # Strip the date cleanly out of the sender string variable
         email_from = re.sub(timestamp_pattern, '', email_from).strip()
+        
+        # Clean up any inner stuttered spaces inside the time segment for the date panel display
+        email_date = re.sub(r'\s+:', ':', email_date)
+        email_date = re.sub(r'(\d)\s+(\d:)', r'\1\2', email_date)
     else:
-        # Fallback crawl to locate loose layout prints inside the header segment
         for line in lines[:25]:
             if re.search(r'\d{1,2}:\d{2}\s*(?:AM|PM)', line) or any(day in line for day in ["Mon,", "Tue,", "Wed,", "Thu,", "Fri,", "Sat,", "Sun,"]):
-                if "@" not in line and "gmail" not in line.lower():
+                if "@" not in line and "gmail" not in line.lower() and "http" not in line.lower():
                     email_date = line
                     break
 
-    # Clean up double spacing trailing brackets if generated during text extractions
     email_from = re.sub(r'\s+', ' ', email_from).strip()
 
-    # --------------------------------------------------------
-    # PASS 6: Attachment Discovery
-    # --------------------------------------------------------
-
+    # 6. PASS 6: Attachment Discovery
     for line in lines:
         attachment_match = re.search(
             r'([\w\s\-\(\)\[\]\.]+?\.(?:pdf|zip|rar|png|jpg|jpeg|doc|docx|xls|xlsx|ppt|pptx))\s*(\d+(?:\.\d+)?\s*[KMG]?B)?',
@@ -283,11 +288,26 @@ def parse_pdf(file_bytes: bytes) -> dict:
         domain_match = re.search(r'@([\w\.-]+\.\w+)', sender_email)
         if domain_match:
             domain_scope = domain_match.group(1).strip()
+
+    # ─────────────── DYNAMIC CONFIDENCE SCORING ENGINE ───────────────
+    base_confidence = 85
+    
+    if email_from == "Unknown Origin Profile":
+        base_confidence -= 20
+    if email_to == "Unknown":
+        base_confidence -= 15
+    if "static document" in email_subject.lower():
+        base_confidence -= 10
+    if "https://mail.google.com" in raw_text and domain_scope == "gmail.com":
+        base_confidence -= 5
+        
+    final_confidence_level = max(25, min(base_confidence, 95))
             
     return {
         "file_type": "pdf",
         "risk_score": final_risk_score,
         "severity": severity,
+        "confidence_level": final_confidence_level,  
         "danger_urls": vt_danger_count,
         "reasons": reasons if reasons else [{"type": "clean", "message": "No immediate text anomalies discovered."}],
         "recommended_action": ["Do not click nested buttons if origin is untrusted", "Submit file source to SOC portal link tracking teams"] if severity == "High" else ["Document parsed cleanly. Monitor hyperlinks safely."],

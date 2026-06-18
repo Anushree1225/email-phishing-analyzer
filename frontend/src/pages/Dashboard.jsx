@@ -294,6 +294,7 @@ export default function Dashboard({ dark, toggleTheme }) {
                 urlsFound={result.urls_found}
                 emlDetails={result.eml_details}
                 fileType={result.file_type} 
+                confidenceLevel={result.confidence_level} // 👈 DOUBLE CHECK THAT THIS IS HERE
               />
             </div>
 

@@ -26,7 +26,7 @@ function SectionTitle({ label, dark }) {
   );
 }
 
-export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails, fileType }) {
+export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails, fileType,confidenceLevel }) {
   
   const isPdf = fileType === "pdf" || emlDetails?.file_type === "pdf";
   const intelligentUrls = emlDetails?.url_intelligence || [];
@@ -107,7 +107,15 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
   const hasThreats = reasons && reasons.length > 0 && reasons[0]?.type !== "clean";
 
-  const computedConfidence = isPdf ? (hasThreats ? "35%" : "90%") : `${100 - (reasons && reasons[0]?.type !== "clean" ? 65 : 0)}%`;
+  // 2. Wire it up to look at the prop first, then look inside emlDetails, then use a fallback
+  const finalConfidenceValue = confidenceLevel 
+    || emlDetails?.confidence_level 
+    || (hasThreats ? 65 : 85);
+
+  const computedConfidence = isPdf 
+    ? `${finalConfidenceValue}%` 
+    : `${100 - (hasThreats ? 65 : 0)}%`;
+
   const confidenceColor = hasThreats ? "#ef4444" : "#22c55e";
 
   const dynamicFrom = metaSource?.from || "Unknown Origin Profile";
@@ -272,7 +280,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER ── */}
       {emlDetails?.attachments && emlDetails.attachments.length > 0 && (
-        <div style={{ textAlign: "left" }}>
+        <div style={{ textAlignment: "left" }}>
           <SectionTitle label="📎 Attachment Inventory" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {emlDetails.attachments.map((file, i) => {
