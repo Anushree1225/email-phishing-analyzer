@@ -1,8 +1,7 @@
 import axios from "axios";
 
 // 🚀 Use your actual workspace subdomain string from your frontend port link!
-const API_BASE_URL = "https://super-duper-space-fiesta-97469x4xv6wv2x5x9-8000.app.github.dev";
-
+const API_BASE_URL = "https://effective-space-engine-699g7rrqrx67cgp4-8000.app.github.dev";
 // 🚀 FIXED: Added the missing variable assignment token declaration here
 const MOCK_RESPONSE = {
   risk_score: 87,
