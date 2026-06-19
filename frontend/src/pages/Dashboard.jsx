@@ -81,7 +81,6 @@ export default function Dashboard({ dark, toggleTheme }) {
     letterSpacing: 1,
   });
 
-  // --- Inline Custom Style Schemas for Image Forensics Panel ---
   const imagePanelStyles = {
     card: {
       background: dark ? "rgba(15,23,42,0.4)" : "rgba(255,255,255,0.7)",
@@ -104,6 +103,10 @@ export default function Dashboard({ dark, toggleTheme }) {
     }
   };
 
+  // Safe local parsing parameters mapped to handle the live result stream layout properties cleanly
+  const imgAnalysis = result?.image_analysis || {};
+  const cleanOcrText = imgAnalysis.extracted_content_raw || result?.extracted_text || "";
+
   return (
     <div style={{ minHeight: "100vh", background: dark
       ? "radial-gradient(ellipse at 20% 20%, #0c1e3a 0%, #070e1a 60%, #030712 100%)"
@@ -111,7 +114,7 @@ export default function Dashboard({ dark, toggleTheme }) {
       transition: "background 0.4s ease",
     }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <header style={{
         padding: "1rem 2rem",
         display: "flex",
@@ -166,10 +169,10 @@ export default function Dashboard({ dark, toggleTheme }) {
         </div>
       </header>
 
-      {/* ── Main ── */}
+      {/* Main Body */}
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.25rem" }}>
 
-        {/* ── INPUT SECTION ── */}
+        {/* INPUT PANEL */}
         {!result && !scanning && (
           <div style={{ animation: "fadeUp 0.5s ease both" }}>
             <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
@@ -233,18 +236,18 @@ export default function Dashboard({ dark, toggleTheme }) {
           </div>
         )}
 
-        {/* ── SCAN PROGRESS ── */}
+        {/* SCAN PROGRESS OVERLAY */}
         {scanning && (
           <div style={{ animation: "fadeUp 0.4s ease both" }}>
             <ScanProgress dark={dark} />
           </div>
         )}
 
-        {/* ── RESULTS PANEL ── */}
+        {/* RESULTS CORE COMPONENT BLOCKS */}
         {result && !scanning && (
           <div style={{ animation: "fadeUp 0.5s ease both" }}>
             
-            {/* ── A: PDF NOTICE (UNTOUCHED) ── */}
+            {/* PDF NOTICE LINK BANNER */}
             {result.file_type === "pdf" && (
               <div style={{
                 fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", lineHeight: "1.5",
@@ -257,12 +260,12 @@ export default function Dashboard({ dark, toggleTheme }) {
                 <div>
                   <strong style={{ letterSpacing: "0.5px" }}>FORENSIC CONFIGURATION NOTICE (CONFIDENCE ADJUSTED):</strong>
                   <br />
-                  Flattened static layout container (.pdf) detected. Because print output streams permanently discard underlying core mail transfer envelopes, real-time cryptographic verification (SPF/DKIM/DMARC server validation signatures) cannot be computed. 
+                  Flattened static portable document file block (.pdf) handled. Mail cryptographic routing vectors cannot be dynamically parsed. Trust parameters have been customized contextually.
                 </div>
               </div>
             )}
 
-            {/* ── B: 🚀 NEW IMAGE FORENSICS PLATFORM NOTICE ── */}
+            {/* IMAGE PLATFORM BANNER NOTICE */}
             {result.file_type === "image" && (
               <div style={{
                 fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", lineHeight: "1.5",
@@ -275,12 +278,12 @@ export default function Dashboard({ dark, toggleTheme }) {
                 <div>
                   <strong style={{ letterSpacing: "0.5px" }}>IMAGE FORENSICS NOTICE (VISUAL EVIDENCE CEILING):</strong>
                   <br />
-                  Flat raster image asset format detected. стратегические transport parameters (cryptographic server alignments SPF/DKIM/DMARC) do not exist natively within raw pixel matrices. Threat scores are weighted entirely on deep-learning OCR keyword triggers and social engineering indicators.
+                  Flat raster image asset format detected. Cryptographic transport parameters (SPF/DKIM/DMARC signatures) do not exist natively within raw pixel matrices. Threat scores are weighted entirely on deep-learning OCR keyword triggers and social engineering indicators.
                 </div>
               </div>
             )}
 
-            {/* Report header */}
+            {/* Report layout navigation headers */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem",
@@ -306,43 +309,43 @@ export default function Dashboard({ dark, toggleTheme }) {
               </button>
             </div>
 
-            {/* Core Results Block Split */}
+            {/* Results Display Panel Split Layout Split */}
             <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.25rem", alignItems: "start" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                 <RiskCard dark={dark} result={result} />
                 <RecommendedActions dark={dark} actions={result.recommended_action} result={result} />
               </div>
               
-              {/* ── ROUTING THE RESULTS SUBPANELS ON FILE TYPE ── */}
+              {/* IMAGE MODE PANEL CONDITION SPECIFICATIONS */}
               {result.file_type === "image" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   
-                  {/* LAYER 1: VISUAL EVIDENCE ANALYSIS CARDS */}
+                  {/* LAYER 1: HIGHLIGHTED CARD GLANCE STATISTICS */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
                     <div style={imagePanelStyles.card}>
                       <span style={imagePanelStyles.label}>OCR Status</span>
                       <span style={{ ...imagePanelStyles.value, color: "#10b981" }}>
-                        {result.image_analysis?.ocr_status || "SUCCESS"}
+                        {imgAnalysis.ocr_status || "SUCCESS"}
                       </span>
                     </div>
                     <div style={imagePanelStyles.card}>
                       <span style={imagePanelStyles.label}>QR Code Matrices</span>
                       <span style={{ ...imagePanelStyles.value, color: result.danger_urls > 0 ? "#ef4444" : dark ? "#cbd5e1" : "#334155" }}>
-                        {result.image_analysis?.qr_codes_found || 0} Found
+                        {imgAnalysis.qr_codes_found || 0} Found
                       </span>
                     </div>
                     <div style={imagePanelStyles.card}>
                       <span style={imagePanelStyles.label}>Visible URL Layouts</span>
                       <span style={{ ...imagePanelStyles.value, color: "#38bdf8" }}>
-                        {result.image_analysis?.visible_urls_count || 0} Found
+                        {imgAnalysis.visible_urls_count || 0} Found
                       </span>
                     </div>
                   </div>
 
-                  {/* LAYER 2: DEEP FORENSIC ATTRIBUTE SUBPANELS */}
+                  {/* LAYER 2: TWIN SUMMARY ATTRIBUTES SECTION */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", flexWrap: "wrap" }}>
                     
-                    {/* Panel A: Image Intelligence */}
+                    {/* Image Structural Specification Module */}
                     <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(15,23,42,0.2)" : "#fff" }}>
                       <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.5rem", fontWeight: 700 }}>
                         // IMAGE STRUCTURAL INTELLIGENCE
@@ -350,60 +353,47 @@ export default function Dashboard({ dark, toggleTheme }) {
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.72rem" }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>Image Container:</span>
-                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>
-                            {result.image_analysis?.image_type || "PNG"}
-                          </strong>
+                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.image_type || "PNG"}</strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>Raster Resolution:</span>
-                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>
-                            {result.image_analysis?.dimensions || "Unknown Dimensions"}
-                          </strong>
+                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.dimensions || "Unknown"}</strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>Recovered Tokens:</span>
-                          <strong style={{ color: "#38bdf8" }}>
-                            {result.image_analysis?.word_count ?? 0} Words
-                          </strong>
+                          <strong style={{ color: "#38bdf8" }}>{imgAnalysis.word_count || 0} Words</strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>OCR Target Range:</span>
-                          <strong style={{ color: "#10b981" }}>
-                            {result.image_analysis?.ocr_confidence || "92%"}
-                          </strong>
+                          <strong style={{ color: "#10b981" }}>{imgAnalysis.ocr_confidence || "92%"}</strong>
                         </div>
                       </div>
                     </div>
 
-                    {/* Panel B: Visual Forensics Counter */}
+                    {/* Content Intelligence Field Tracking Panel */}
                     <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(15,23,42,0.2)" : "#fff" }}>
                       <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.5rem", fontWeight: 700 }}>
-                         // VISUAL CONTENT FORENSICS
+                        // VISUAL CONTENT FORENSICS
                       </h3>
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.72rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "#64748b" }}>Emails Detected:</span>
-                            <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>
-                              {result.image_analysis?.emails_detected ?? 0}
-                            </strong>
-                       </div>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#64748b" }}>Emails Detected:</span>
+                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.emails_detected || 0}</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>Phone Lines Discovered:</span>
-                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>
-                             {result.image_analysis?.phone_detected ?? 0}
-                          </strong>
-                       </div>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.phone_detected || 0}</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "#64748b" }}>Brand Signatures:</span>
-                          <strong style={{ color: "#f59e0b" }}>
-                              {result.image_analysis?.brands_referenced || "None"}
-                          </strong>
-                       </div>
-                   </div>
-               </div>
+                          <strong style={{ color: "#f59e0b" }}>{imgAnalysis.brands_referenced || "None"}</strong>
+                        </div>
+                      </div>
+                    </div>
 
-                    
-                  {/* LAYER 3: RAW OCR EXTRACTED TEXT STREAM VIEWPORT */}
+                  </div>
+
+                  {/* LAYER 3: CONSOLE VIEWPORT WINDOW FOR STRINGS CONTEXTS */}
                   <div style={imagePanelStyles.card}>
                     <h3 style={{ fontSize: "0.72rem", color: dark ? "#94a3b8" : "#475569", marginBottom: "0.6rem", fontWeight: 700 }}>
                       // OCR EXTRACTED CONTENT CONSOLE STREAM
@@ -414,18 +404,17 @@ export default function Dashboard({ dark, toggleTheme }) {
                       padding: "1rem",
                       borderRadius: 8,
                       fontSize: "0.75rem",
-                      color: dark ? "#94a3b8" : "#475569",
+                      color: dark ? "#cbd5e1" : "#475569",
                       whiteSpace: "pre-wrap",
                       textAlign: "left",
                       maxHeight: "220px",
                       overflowY: "auto",
                       lineHeight: "1.6"
                     }}>
-                      {result.image_analysis?.extracted_content_raw || "No text layers discovered inside raster footprint data."}
+                      {cleanOcrText || "No text layers discovered inside raster footprint data."}
                     </div>
                   </div>
 
-                  {/* Include the native URLs and findings lists below the image metrics summary panels */}
                   <FindingsList
                     dark={dark}
                     reasons={result.reasons}
@@ -438,7 +427,7 @@ export default function Dashboard({ dark, toggleTheme }) {
 
                 </div>
               ) : (
-                /* ── NATIVE EML / PDF FINDINGS VIEW (UNTOUCHED) ── */
+                /* NATIVE REPORT SPLIT */
                 <FindingsList
                   dark={dark}
                   reasons={result.reasons}
@@ -451,7 +440,7 @@ export default function Dashboard({ dark, toggleTheme }) {
               )}
             </div>
 
-            {/* Summary ribbon */}
+            {/* Bottom summary ribbon */}
             <div style={{
               marginTop: "1.25rem", padding: "1.1rem 1.5rem",
               background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
