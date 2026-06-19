@@ -26,9 +26,10 @@ function SectionTitle({ label, dark }) {
   );
 }
 
-export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails, fileType,confidenceLevel }) {
+export default function FindingsList({ dark, reasons, highlightedContent, urlsFound, emlDetails, fileType, confidenceLevel }) {
   
   const isPdf = fileType === "pdf" || emlDetails?.file_type === "pdf";
+  const isImage = fileType === "image";
   const intelligentUrls = emlDetails?.url_intelligence || [];
   const [showClean, setShowClean] = useState(false);
 
@@ -107,7 +108,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
   const hasThreats = reasons && reasons.length > 0 && reasons[0]?.type !== "clean";
 
-  // 2. Wire it up to look at the prop first, then look inside emlDetails, then use a fallback
   const finalConfidenceValue = confidenceLevel 
     || emlDetails?.confidence_level 
     || (hasThreats ? 65 : 85);
@@ -126,71 +126,77 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   return (
     <div style={cardStyle}>
 
-      {/* ── 🔒 BOX 1: DYNAMIC CONFIDENCE SCORE VECTOR ── */}
-      {isPdf ? (
-        <div>
-          <SectionTitle label="📉 Confidence Level" dark={dark} />
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", fontFamily: "'Space Mono', monospace" }}>
-            <div style={{ fontSize: "2.2rem", fontWeight: 700, color: confidenceColor }}>
-              {computedConfidence}
+      {/* ── 🔒 BOX 1: DYNAMIC CONFIDENCE SCORE VECTOR (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
+      {!isImage && (
+        <>
+          {isPdf ? (
+            <div>
+              <SectionTitle label="📉 Confidence Level" dark={dark} />
+              <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", fontFamily: "'Space Mono', monospace" }}>
+                <div style={{ fontSize: "2.2rem", fontWeight: 700, color: confidenceColor }}>
+                  {computedConfidence}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: dark ? "#94a3b8" : "#64748b", lineHeight: "1.4", textAlign: "left" }}>
+                  <strong style={{ color: hasThreats ? "#eab308" : "#22c55e", display: "block", marginBottom: "0.15rem" }}>
+                    {hasThreats ? "FORENSIC CEILING ADJUSTED" : "DOCUMENT ANALYSIS TRUST VALIDATED"}
+                  </strong>
+                  {hasThreats 
+                    ? "Flat container format (.pdf) parsed. Envelope mail signatures do not exist natively within layout streams."
+                    : "Layout text streams fully cross-referenced clean. System adjusted trust configuration for static portable assets."}
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: "0.72rem", color: dark ? "#94a3b8" : "#64748b", lineHeight: "1.4", textAlign: "left" }}>
-              <strong style={{ color: hasThreats ? "#eab308" : "#22c55e", display: "block", marginBottom: "0.15rem" }}>
-                {hasThreats ? "FORENSIC CEILING ADJUSTED" : "DOCUMENT ANALYSIS TRUST VALIDATED"}
-              </strong>
-              {hasThreats 
-                ? "Flat container format (.pdf) parsed. Envelope mail signatures do not exist natively within layout streams."
-                : "Layout text streams fully cross-referenced clean. System adjusted trust configuration for static portable assets."}
+          ) : (
+            <div>
+              <SectionTitle label="🔒 Security Protocol Verification" dark={dark} />
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                {renderAuthBadge("SPF (Sender Policy)", emlDetails?.security_protocols?.spf || emlDetails?.authentication?.spf)}
+                {renderAuthBadge("DKIM (Signature)", emlDetails?.security_protocols?.dkim || emlDetails?.authentication?.dkim)}
+                {renderAuthBadge("DMARC (Alignment)", emlDetails?.security_protocols?.dmarc || emlDetails?.authentication?.dmarc)}
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <SectionTitle label="🔒 Security Protocol Verification" dark={dark} />
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            {renderAuthBadge("SPF (Sender Policy)", emlDetails?.security_protocols?.spf || emlDetails?.authentication?.spf)}
-            {renderAuthBadge("DKIM (Signature)", emlDetails?.security_protocols?.dkim || emlDetails?.authentication?.dkim)}
-            {renderAuthBadge("DMARC (Alignment)", emlDetails?.security_protocols?.dmarc || emlDetails?.authentication?.dmarc)}
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* ── 📬 BOX 2: METADATA PANEL (SWAPS LABELS CONDITIONALLY) ── */}
-      <div style={{
-        padding: "0.9rem",
-        background: metaSource?.header_mismatch ? "rgba(239,68,68,0.04)" : dark ? "rgba(30,58,95,0.2)" : "rgba(241,245,249,0.7)",
-        border: `1px solid ${metaSource?.header_mismatch ? "rgba(239,68,68,0.2)" : dark ? "#1e3a5f" : "#e2e8f0"}`,
-        borderRadius: 12, fontSize: "0.78rem", fontFamily: "'Space Mono', monospace", textAlign: "left"
-      }}>
-        <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.4rem" }}>
-          {isPdf ? "📄 DOCUMENT SPECIFICATION METADATA" : "TRANSPATH METADATA"}
+      {/* ── 📬 BOX 2: METADATA PANEL (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
+      {!isImage && (
+        <div style={{
+          padding: "0.9rem",
+          background: metaSource?.header_mismatch ? "rgba(239,68,68,0.04)" : dark ? "rgba(30,58,95,0.2)" : "rgba(241,245,249,0.7)",
+          border: `1px solid ${metaSource?.header_mismatch ? "rgba(239,68,68,0.2)" : dark ? "#1e3a5f" : "#e2e8f0"}`,
+          borderRadius: 12, fontSize: "0.78rem", fontFamily: "'Space Mono', monospace", textAlign: "left"
+        }}>
+          <div style={{ color: dark ? "#38bdf8" : "#0369a1", fontWeight: 700, fontSize: "0.65rem", letterSpacing: 1, marginBottom: "0.4rem" }}>
+            {isPdf ? "📄 DOCUMENT SPECIFICATION METADATA" : "TRANSPATH METADATA"}
+          </div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: dark ? "#cbd5e1" : "#334155" }}>
+            <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SENDER:" : "SENDER / FROM:"}</span> {dynamicFrom}
+          </div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+            <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SUBJECT:" : "SUBJECT CONTEXT:"}</span> {dynamicSubject}
+          </div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+            <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "PRINT / CAPTURE DATE:" : "TIMESTAMP / DATE:"}</span> {dynamicDate}
+          </div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+            <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "INTENDED RECIPIENT:" : "RECIPIENT / TO:"}</span> {dynamicTo}
+          </div>
+          {!isPdf && (
+            <>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+                <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {metaSource?.return_path || "N/A"}
+              </div>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
+                <span style={{ color: dark ? "#475569" : "#94a3b8" }}>DOMAIN AGE:</span>{' '}
+                <span style={{ color: metaSource?.domain_age?.includes("(NEWLY CREATED)") ? "#f59e0b" : "#22c55e" }}>
+                  {metaSource?.domain_age || "Unknown"}
+                </span>
+              </div>
+            </>
+          )}
         </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SENDER:" : "SENDER / FROM:"}</span> {dynamicFrom}
-        </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "EXTRACTED SUBJECT:" : "SUBJECT CONTEXT:"}</span> {dynamicSubject}
-        </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "PRINT / CAPTURE DATE:" : "TIMESTAMP / DATE:"}</span> {dynamicDate}
-        </div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-          <span style={{ color: dark ? "#475569" : "#94a3b8" }}>{isPdf ? "INTENDED RECIPIENT:" : "RECIPIENT / TO:"}</span> {dynamicTo}
-        </div>
-        {!isPdf && (
-          <>
-            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>RETURN-PATH:</span> {metaSource?.return_path || "N/A"}
-            </div>
-            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.25rem", color: dark ? "#cbd5e1" : "#334155" }}>
-              <span style={{ color: dark ? "#475569" : "#94a3b8" }}>DOMAIN AGE:</span>{' '}
-              <span style={{ color: metaSource?.domain_age?.includes("(NEWLY CREATED)") ? "#f59e0b" : "#22c55e" }}>
-                {metaSource?.domain_age || "Unknown"}
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+      )}
 
       {/* ── ⚠ BOX 3: THREAT INDICATORS ROW ── */}
       {hasThreats && (
@@ -212,8 +218,8 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── ⚙️ BOX 4: TECHNICAL EXTRACTIONS (SWAPS CONFIGURATION CONDITIONALLY) ── */}
-      {dnsSource && (
+      {/* ── 💡 BOX 4: TECHNICAL EXTRACTIONS (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
+      {dnsSource && !isImage && (
         <div style={{
           marginTop: "0.25rem", padding: "1rem 1.25rem",
           background: dark ? "rgba(15,23,42,0.4)" : "rgba(248,250,252,0.6)",
@@ -245,7 +251,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                     <td style={tableValueStyle}>
                       <div style={{ color: "#38bdf8", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy || "N/A"}</div>
                       <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
-                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
+                        🧠 <span style={{ fontWight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
                       </div>
                     </td>
                   </tr>
@@ -338,7 +344,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                   {finalMalicious.map((item, idx) => (
                     <div key={idx} style={{ padding: "0.6rem", background: "rgba(0,0,0,0.2)", borderRadius: 8, borderLeft: "3px solid #ef4444", fontSize: "0.72rem" }}>
                       <div style={{ fontFamily: "'Space Mono', monospace", color: dark ? "#e2e8f0" : "#1e293b", wordBreak: "break-all" }}>{item.url}</div>
-                      <div style={{ fontSize: "0.62rem", color: "#f87171", marginTop: 4, fontFamily: "sans-serif" }}>⚠️ Threat Status: {item.details || "Flagged by active active security databases"}</div>
+                      <div style={{ fontSize: "0.62rem", color: "#f87171", marginTop: 4, fontFamily: "sans-serif" }}>⚠️ Threat Status: {item.details || "Flagged by active security databases"}</div>
                     </div>
                   ))}
                 </div>
