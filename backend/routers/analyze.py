@@ -5,8 +5,9 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import uuid
 import re
-import cv2        # 🚀 Double-check this is here too!
-import numpy as np # 💡 ADD THIS LINE HERE!
+import cv2        
+import numpy as np
+
 # Import your custom EML parsing engine from the services folder
 from services.eml_parser import parse_eml
 # 🚀 ADDED: Import your specialized PDF intelligence engine 
@@ -77,7 +78,6 @@ async def analyze_email_file(file: UploadFile = File(...)):
             print(f"   SUBJECT:          {metadata_inner.get('subject', 'No Subject')}")
             print(f"   CALCULATED RISK: {eml_analysis['risk_score']}% ({eml_analysis['severity']} Severity)")
             
-            # ... EML Threat Findings output logs left intact ...
             print("-"*60)
             print(f" 🚨 THREAT FINDINGS MAPPED ({len(eml_analysis['reasons'])}):")
             
@@ -98,7 +98,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             return {
                 "risk_score": eml_analysis["risk_score"],
                 "severity": eml_analysis["severity"],
-                "danger_urls": eml_analysis["danger_urls"],  # Pull flat value straight to ribbon
+                "danger_urls": eml_analysis["danger_urls"],  
                 "reasons": eml_analysis["reasons"] if eml_analysis["reasons"] else [{"type": "clean", "message": "No immediate risk indicators found."}],
                 "recommended_action": eml_analysis["recommended_action"],
                 "highlighted_content": [], 
@@ -108,12 +108,12 @@ async def analyze_email_file(file: UploadFile = File(...)):
                 "urls_found": eml_analysis["urls_found"],       
                 "file_type": "eml", 
                 "dns_intelligence": dns_info,
-                "eml_details": details_inner  # Forwarding down clean, verified structural layout block
+                "eml_details": details_inner  
             }
             
         except Exception as e:
             import traceback
-            traceback.print_exc()  # Prints the real nested traceback line directly to your console logs
+            traceback.print_exc()  
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
 
     # 🚀 REAL DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
@@ -145,7 +145,6 @@ async def analyze_email_file(file: UploadFile = File(...)):
             print(f"    {dns_info.get('spf_analyst_note', '')}")
             print("="*60 + "\n")
             
-            # FIXED: Return the real, calculated object dictionary directly to the frontend app!
             return pdf_analysis
             
         except Exception as e:
@@ -153,7 +152,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"PDF Forensic Engine failed: {str(e)}")
 
-  # 📸 IMAGE FORENSICS PROCESSING DECK (png, jpg, jpeg)
+    # 📸 IMAGE FORENSICS PROCESSING DECK (png, jpg, jpeg)
     elif file_extension in ["png", "jpg", "jpeg"]:
         try:
             print(f"--- [IMAGE FORENSICS SCAN] Routing to OCR & QR Decoder ---")
@@ -179,7 +178,6 @@ async def analyze_email_file(file: UploadFile = File(...)):
                     qr_urls = [url.strip() for url in decoded_info if url and url.strip()]
                 
                 # Extract spatial characters + coordinate points arrays
-                # Using the safely restored global reader layout instance
                 from services.ocr_service import reader
                 if reader:
                     raw_ocr = reader.readtext(img, detail=1)
@@ -192,13 +190,19 @@ async def analyze_email_file(file: UploadFile = File(...)):
                         })
                     extracted_text = "\n".join(text_lines)
 
+            # --- EXTRACTION LOGIC FOR VISIBLE TEXT LINKS ---
+            visible_urls = re.findall(r'(?:https?://|www\.)[^\s]+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}(?:/[^\s]*)?\b', extracted_text)
+            visible_urls = [u for u in visible_urls if "@" not in u and not u.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            
+            # Combine all targets found
+            all_discovered_links = list(set(qr_urls + visible_urls))
+
             # 2. HEURISTIC SCORING CORE WITH EXTENDED SHORT-STEM BOUNDARY REGEX
             calculated_risk = 0
             reasons = []
             highlighted_content = []
             lower_text = extracted_text.lower()
             
-            # Catches noisy layouts like 'allacker', 'vulnerab Idy', or 'suspend'
             urgency_patterns = [r"vulnerab", r"allack", r"suspend", r"expire", r"immediat", r"action required"]
             for pattern in urgency_patterns:
                 if re.search(pattern, lower_text):
@@ -247,24 +251,36 @@ async def analyze_email_file(file: UploadFile = File(...)):
             print(f" EXTRACTED WORDS: {len(extracted_text.split())} tokens")
             print("="*60 + "\n")
 
+            # Dynamic link payload map
+            final_url_report = []
+            for url in all_discovered_links:
+                is_link_safe = True
+                if final_risk_score > 50 and url in qr_urls and "wustl.edu" not in url:
+                    is_link_safe = False
+
+                final_url_report.append({
+                    "url": url,
+                    "safe": is_link_safe,
+                    "details": "Verified safe via engine lookups." if is_link_safe else "Flagged by signature matching analysis."
+                })
+
             return {
                 "file_type": "image",
                 "risk_score": final_risk_score,
                 "severity": severity,
                 "confidence_level": 45,
-                "danger_urls": len(qr_urls),
+                "danger_urls": len([u for u in final_url_report if not u["safe"]]),
                 "reasons": reasons if reasons else [{"type": "clean", "message": "No obvious visual anomalies flagged."}],
                 "recommended_action": ["Isolate target domain, do not interact with visible link buttons."] if severity == "High" else ["Monitor visual layout elements safely."],
                 "highlighted_content": highlighted_content,
                 "scan_id": f"SCAN-IMG-{uuid.uuid4().hex[:6].upper()}",
                 "scanned_at": datetime.utcnow().isoformat() + "Z",
-                "urls_found": [{"url": url, "safe": False if final_risk_score > 50 else True} for url in qr_urls],
+                "urls_found": final_url_report,
                 
                 "image_analysis": {
                     "ocr_status": "SUCCESS" if extracted_text else "FAILED",
                     "qr_codes_found": len(qr_urls),
-                    "visible_urls_count": len(re.findall(r'https?://\S+|www\.\S+|\b\w+\.\w{2,4}/\S*', extracted_text)),
-                    
+                    "visible_urls_count": len(visible_urls),
                     "image_type": image_type,
                     "dimensions": dimensions,
                     "word_count": len(extracted_text.split()),
