@@ -30,10 +30,12 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   
   const isPdf = fileType === "pdf" || emlDetails?.file_type === "pdf";
   const isImage = fileType === "image";
+  const isText = fileType === "text"; // 🎯 Track plain text scans
+  
   const intelligentUrls = emlDetails?.url_intelligence || [];
   const [showClean, setShowClean] = useState(false);
 
-  // Helper badge function for EML signatures (Finalized & Untouched)
+  // Helper badge function for EML signatures
   const renderAuthBadge = (protocol, status) => {
     const isPass = status === "PASS";
     const isFail = status === "FAIL";
@@ -77,10 +79,20 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
     border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
     borderRadius: 16,
-    padding: "1.75rem",
+    padding: isText ? "0px" : "1.75rem", // 🎨 Smooth look for text mode bounds
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
+    boxShadow: isText ? "none" : "initial",
+    borderNone: isText ? "none" : "initial",
+  };
+
+  // Plain-text sub-container configuration to avoid card-stack nesting borders
+  const textSubCardStyle = {
+    background: dark ? "rgba(15,23,42,0.4)" : "rgba(255,255,255,0.7)",
+    border: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`,
+    padding: "1.25rem",
+    borderRadius: 14,
   };
 
   const tableLabelStyle = {
@@ -124,10 +136,10 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   const dynamicDate = metaSource?.date || "Extracted Layer Metadata Runtime";
 
   return (
-    <div style={cardStyle}>
+    <div style={isText ? { display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%" } : cardStyle}>
 
-      {/* ── 🔒 BOX 1: DYNAMIC CONFIDENCE SCORE VECTOR (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
-      {!isImage && (
+      {/* ── 🔒 BOX 1: SECURITY PROTOCOLS / CONFIDENCE (BYPASS IF PLAIN TEXT) ── */}
+      {!isImage && !isText && (
         <>
           {isPdf ? (
             <div>
@@ -159,8 +171,8 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </>
       )}
 
-      {/* ── 📬 BOX 2: METADATA PANEL (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
-      {!isImage && (
+      {/* ── 📬 BOX 2: TRANSPATH METADATA (BYPASS IF PLAIN TEXT) ── */}
+      {!isImage && !isText && (
         <div style={{
           padding: "0.9rem",
           background: metaSource?.header_mismatch ? "rgba(239,68,68,0.04)" : dark ? "rgba(30,58,95,0.2)" : "rgba(241,245,249,0.7)",
@@ -200,7 +212,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── ⚠ BOX 3: THREAT INDICATORS ROW ── */}
       {hasThreats && (
-        <div style={{ textAlign: "left" }}>
+        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
           <SectionTitle label="⚠ Threat Indicators" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {reasons.map((r, i) => (
@@ -218,8 +230,8 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 💡 BOX 4: TECHNICAL EXTRACTIONS (ONLY RENDER IF NOT AN IMAGE ASSET) ── */}
-      {dnsSource && !isImage && (
+      {/* ── 💡 BOX 4: TECHNICAL EXTRACTIONS (BYPASS IF PLAIN TEXT) ── */}
+      {dnsSource && !isImage && !isText && (
         <div style={{
           marginTop: "0.25rem", padding: "1rem 1.25rem",
           background: dark ? "rgba(15,23,42,0.4)" : "rgba(248,250,252,0.6)",
@@ -251,7 +263,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                     <td style={tableValueStyle}>
                       <div style={{ color: "#38bdf8", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy || "N/A"}</div>
                       <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
-                        🧠 <span style={{ fontWight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
+                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
                       </div>
                     </td>
                   </tr>
@@ -284,9 +296,9 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER ── */}
-      {emlDetails?.attachments && emlDetails.attachments.length > 0 && (
-        <div style={{ textAlignment: "left" }}>
+      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER (BYPASS IF PLAIN TEXT) ── */}
+      {emlDetails?.attachments && emlDetails.attachments.length > 0 && !isText && (
+        <div style={{ textAlign: "left" }}>
           <SectionTitle label="📎 Attachment Inventory" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {emlDetails.attachments.map((file, i) => {
@@ -311,13 +323,14 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── 🔍 BOX 6: SUSPICIOUS CONTENT LAYER ── */}
       {highlightedContent?.length > 0 && (
-        <div style={{ textAlign: "left" }}>
-          <SectionTitle label="🔍 Suspicious Content" dark={dark} />
+        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
+          <SectionTitle label="🔍 Suspicious Content Sentences" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {highlightedContent.map((h, i) => (
               <div key={i} style={{ padding: "0.65rem 0.9rem", background: dark ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.28)", borderRadius: 8 }}>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#f59e0b", fontWeight: 700, marginBottom: 3 }}>{h.text}</div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: dark ? "#94a3b8" : "#64748b" }}>Reason: {h.reason}</div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#f59e0b", fontWeight: 700, marginBottom: 3 }}>"{h.text}"</div>
+                {/* 🎯 FIX: Updated dynamic text token coloring block to respond smoothly on dark background hooks */}
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: dark ? "#cbd5e1" : "#475569" }}>Reason: {h.reason}</div>
               </div>
             ))}
           </div>
@@ -326,7 +339,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── 🔗 BOX 7: URL INTELLIGENCE ROW ── */}
       {((finalMalicious && finalMalicious.length > 0) || (finalClean && finalClean.length > 0) || (urlsFound && urlsFound.length > 0)) && (
-        <div style={{ textAlign: "left" }}>
+        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
           <SectionTitle label="🔗 URL Intelligence" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             
@@ -342,7 +355,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", fontWeight: 700, color: "#ef4444", marginBottom: "0.5rem", letterSpacing: 1 }}>🚫 FLAGGED THREATS ({finalMalicious.length})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   {finalMalicious.map((item, idx) => (
-                    <div key={idx} style={{ padding: "0.6rem", background: "rgba(0,0,0,0.2)", borderRadius: 8, borderLeft: "3px solid #ef4444", fontSize: "0.72rem" }}>
+                    <div key={idx} style={{ padding: "0.6rem", background: "rgba(0,0,0,0.25)", borderRadius: 8, borderLeft: "3px solid #ef4444", fontSize: "0.72rem" }}>
                       <div style={{ fontFamily: "'Space Mono', monospace", color: dark ? "#e2e8f0" : "#1e293b", wordBreak: "break-all" }}>{item.url}</div>
                       <div style={{ fontSize: "0.62rem", color: "#f87171", marginTop: 4, fontFamily: "sans-serif" }}>⚠️ Threat Status: {item.details || "Flagged by active security databases"}</div>
                     </div>

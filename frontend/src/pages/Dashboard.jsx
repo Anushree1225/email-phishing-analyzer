@@ -133,6 +133,35 @@ export default function Dashboard({ dark, toggleTheme }) {
     }
   };
 
+  const textPanelStyles = {
+    progressRow: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.4rem",
+      fontFamily: "'Space Mono', monospace",
+      fontSize: "0.72rem",
+      textAlign: "left",
+      // 🎨 FIX: Dynamic color routing ensures typography labels don't get trapped in black on dark blocks
+      color: dark ? "#e2e8f0" : "#334155"
+    },
+    progressBarOuter: {
+      width: "100%",
+      height: "8px",
+      background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+      borderRadius: "4px",
+      overflow: "hidden"
+    },
+    checkItem: {
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      fontFamily: "'Space Mono', monospace",
+      fontSize: "0.78rem",
+      color: dark ? "#cbd5e1" : "#334155",
+      textAlign: "left"
+    }
+  };
+
   const imgAnalysis = result?.image_analysis || {};
   const cleanOcrText = imgAnalysis.extracted_content_raw || result?.extracted_text || "";
 
@@ -345,59 +374,92 @@ export default function Dashboard({ dark, toggleTheme }) {
                 <RecommendedActions dark={dark} actions={result.recommended_action} result={result} />
               </div>
               
-              {/* IMAGE MODE PANEL CONDITION SPECIFICATIONS */}
-              {result.file_type === "image" ? (
+              {/* SPECIALIZED PLAIN-TEXT REPORT WORKFLOW VIEW */}
+              {result.file_type === "text" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   
-                  {/* DYNAMIC SPATIAL ANALYSIS OVERLAY PANEL */}
-                  {imagePreviewUrl && (
-                    <div style={{ ...imagePanelStyles.card, padding: "1rem" }}>
-                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", marginBottom: "0.75rem", fontWeight: 700 }}>
-                        // THREAT TARGET SPATIAL DETECTION HIGHLIGHTS
-                      </h3>
-                      <div style={{ position: 'relative', display: 'inline-block', width: '100%', overflow: 'hidden', borderRadius: 8 }}>
-                        <img 
-                          ref={imgRef}
-                          src={imagePreviewUrl} 
-                          alt="Scanned Threat Input Layout" 
-                          onLoad={handleRecalculateScale}
-                          style={{ width: '100%', height: 'auto', display: 'block' }}
-                        />
-                        {/* Loop over coordinate items to overlay boxes */}
-                        {imgAnalysis.ocr_blocks?.map((block, idx) => {
-                          if (!block.suspicious) return null;
-                          const minX = Math.min(...block.points.map(p => p[0]));
-                          const minY = Math.min(...block.points.map(p => p[1]));
-                          const maxX = Math.max(...block.points.map(p => p[0]));
-                          const maxY = Math.max(...block.points.map(p => p[1]));
-                          
-                          const isButtonAction = block.role === "button";
+                  {/* SOURCE PROFILE METADATA DETAILS CARD */}
+                  <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(30,58,95,0.15)" : "#fff", textAlign: "left" }}>
+                    <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.75rem", fontWeight: 700 }}>
+                      📋 SOURCE INFOPROFILE SPECIFICATIONS
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", fontSize: "0.78rem" }}>
+                      <div><span style={{ color: "#64748b" }}>Input Mechanism:</span> <strong style={{ color: "#38bdf8" }}>Pasted Plain Text Stream</strong></div>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span style={{ color: "#64748b" }}>Detected Sender:</span> <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{result.text_details?.from || "Not Available"}</strong></div>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span style={{ color: "#64748b" }}>Detected Subject:</span> <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{result.text_details?.subject || "Not Available"}</strong></div>
+                      {result.text_details?.date && result.text_details.date !== "Not Available" && (
+                        <div><span style={{ color: "#64748b" }}>Extracted Timestamp:</span> <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{result.text_details.date}</strong></div>
+                      )}
+                    </div>
+                  </div>
 
-                          return (
-                            <div
-                              key={idx}
-                              title={isButtonAction ? `🚨 UNVERIFIED INTERACTIVE TRAP: "${block.text}"` : `Flagged Token Area: "${block.text}"`}
-                              style={{
-                                position: 'absolute',
-                                top: `${minY * imgScale.y}px`,
-                                left: `${minX * imgScale.x}px`,
-                                width: `${(maxX - minX) * imgScale.x}px`,
-                                height: `${(maxY - minY) * imgScale.y}px`,
-                                border: isButtonAction ? '3px solid #a855f7' : '2px dashed #ef4444', 
-                                backgroundColor: isButtonAction ? 'rgba(168, 85, 247, 0.15)' : 'rgba(239, 68, 68, 0.18)',
-                                boxShadow: isButtonAction ? '0 0 12px rgba(168, 85, 247, 0.8)' : '0 0 6px rgba(239, 68, 68, 0.5)',
-                                borderRadius: isButtonAction ? '6px' : '0px',
-                                zIndex: 12,
-                                transition: 'transform 0.2s',
-                                cursor: 'pointer'
-                              }}
-                            />
-                          );
-                        })}
+                  {/* LINGUISTIC DIALS & PROGRESS SLIDERS SECTION */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", flexWrap: "wrap" }}>
+                    
+                    {/* Language Metrics Progression Panel */}
+                    <div style={imagePanelStyles.card}>
+                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.8rem", fontWeight: 700 }}>
+                        📊 LINGUISTIC INTENSITY PROFILING
+                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                        <div style={textPanelStyles.progressRow}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Urgency Index</span><strong>{result.language_analysis?.urgency_score || 0}%</strong></div>
+                          <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.urgency_score || 0}%`, height: "100%", background: "#ef4444" }} /></div>
+                        </div>
+                        <div style={textPanelStyles.progressRow}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Fear / Panic Trigger Range</span><strong>{result.language_analysis?.fear_score || 0}%</strong></div>
+                          <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.fear_score || 0}%`, height: "100%", background: "#f59e0b" }} /></div>
+                        </div>
+                        <div style={textPanelStyles.progressRow}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Credential Harvesting Proximity</span><strong>{result.language_analysis?.credential_score || 0}%</strong></div>
+                          <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.credential_score || 0}%`, height: "100%", background: "#a855f7" }} /></div>
+                        </div>
                       </div>
                     </div>
-                  )}
 
+                    {/* Threat Layout Checkbox Verification Blocks */}
+                    <div style={imagePanelStyles.card}>
+                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.8rem", fontWeight: 700 }}>
+                        ⚙️ VECTOR SIGNATURE HEURISTICS
+                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        <div style={textPanelStyles.checkItem}>
+                          <span>{result.language_analysis?.urgency_score > 30 ? "❌" : "✅"}</span>
+                          <span style={{ textDecoration: result.language_analysis?.urgency_score > 30 ? "none" : "line-through", color: result.language_analysis?.urgency_score > 30 ? "#ef4444" : "#64748b" }}>Urgency language patterns identified</span>
+                        </div>
+                        <div style={textPanelStyles.checkItem}>
+                          <span>{result.language_analysis?.credential_score > 30 ? "❌" : "✅"}</span>
+                          <span style={{ textDecoration: result.language_analysis?.credential_score > 30 ? "none" : "line-through", color: result.language_analysis?.credential_score > 30 ? "#ef4444" : "#64748b" }}>Explicit credential requests found</span>
+                        </div>
+                        <div style={textPanelStyles.checkItem}>
+                          <span>{result.language_analysis?.fear_score > 30 ? "❌" : "✅"}</span>
+                          <span style={{ textDecoration: result.language_analysis?.fear_score > 30 ? "none" : "line-through", color: result.language_analysis?.fear_score > 30 ? "#f59e0b" : "#64748b" }}>Account suspension fear vectors hit</span>
+                        </div>
+                        <div style={textPanelStyles.checkItem}>
+                          <span>{result.reasons?.some(r => r.type === "spoofed_header") ? "❌" : "✅"}</span>
+                          <span style={{ textDecoration: result.reasons?.some(r => r.type === "spoofed_header") ? "none" : "line-through", color: result.reasons?.some(r => r.type === "spoofed_header") ? "#ef4444" : "#64748b" }}>Header routing mismatch discovered</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* THREAT FINDINGS AND URL EXPANSIONS PANEL SPLIT */}
+                  <FindingsList
+                    dark={dark}
+                    reasons={result.reasons}
+                    highlightedContent={result.highlighted_content}
+                    urlsFound={result.urls_found}
+                    emlDetails={null}
+                    fileType="text"
+                    confidenceLevel={75}
+                  />
+
+                </div>
+              ) : result.file_type === "image" ? (
+                /* NATIVE RASTER IMAGE ASSSNET FORENSICS SPLIT VIEW */
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                  
                   {/* LAYER 1: HIGHLIGHTED CARD GLANCE STATISTICS */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
                     <div style={imagePanelStyles.card}>
@@ -423,7 +485,6 @@ export default function Dashboard({ dark, toggleTheme }) {
                   {/* LAYER 2: TWIN SUMMARY ATTRIBUTES SECTION */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", flexWrap: "wrap" }}>
                     
-                    {/* Image Structural Specification Module */}
                     <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(15,23,42,0.2)" : "#fff" }}>
                       <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.5rem", fontWeight: 700 }}>
                         // IMAGE STRUCTURAL INTELLIGENCE
@@ -448,7 +509,6 @@ export default function Dashboard({ dark, toggleTheme }) {
                       </div>
                     </div>
 
-                    {/* Content Intelligence Field Tracking Panel */}
                     <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(15,23,42,0.2)" : "#fff" }}>
                       <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.5rem", fontWeight: 700 }}>
                         // VISUAL CONTENT FORENSICS
@@ -493,7 +553,7 @@ export default function Dashboard({ dark, toggleTheme }) {
                     </div>
                   </div>
 
-                  {/* 🎯 WRAPPED COMPONENT CONDITIONAL CHECKED GATE TO AVOID RENDER OF BLANK BOXES */}
+                  {/* WRAPPED COMPONENT CONDITIONAL CHECKED GATE TO AVOID RENDER OF BLANK BOXES */}
                   {((result.reasons && result.reasons.length > 0 && result.reasons[0]?.type !== "clean") || 
                     (result.urls_found && result.urls_found.length > 0)) && (
                     <FindingsList
@@ -509,7 +569,7 @@ export default function Dashboard({ dark, toggleTheme }) {
 
                 </div>
               ) : (
-                /* NATIVE REPORT SPLIT */
+                /* NATIVE FILE SPECIFICATION (.eml & .pdf) SPLIT VIEWS */
                 <FindingsList
                   dark={dark}
                   reasons={result.reasons}

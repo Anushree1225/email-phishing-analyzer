@@ -14,6 +14,8 @@ from services.eml_parser import parse_eml
 from services.pdf_parser import parse_pdf
 # 📸 ADDED: Import your Computer Vision Image Forensics Engine
 from services.ocr_service import extract_text_and_qr_from_image
+# ✏️ ADDED: Import your advanced textual processing engine
+from services.content_analyzer import analyze_content
 
 router = APIRouter()
 
@@ -28,8 +30,19 @@ def analyze_email(payload: Dict[str, Any]):
             email_text = str(payload[key])
             break
 
+    if not email_text.strip():
+        raise HTTPException(status_code=400, detail="Text segment analysis vector empty.")
+
     print(f"--- [TEXT SCAN] Successfully Received Text! Length: {len(email_text)} characters ---")
-    return generate_mock_response(source_type="Pasted Text Details")
+    
+    # Process real parsing parameters using the content analyzer service
+    analysis_results = analyze_content(email_text)
+    
+    # Sync core layout variables matching the frontend payload architecture
+    analysis_results["scan_id"] = f"SCAN-TXT-{uuid.uuid4().hex[:6].upper()}"
+    analysis_results["scanned_at"] = datetime.utcnow().isoformat() + "Z"
+    
+    return analysis_results
 
 
 # --- 2. MULTI-FORMAT FILE SCAN HANDLING (.eml, .pdf, .png, .jpg, .jpeg) ---
@@ -127,7 +140,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             # Extract nested fields safely to preserve terminal telemetry logs
             details_inner = pdf_analysis.get("eml_details", {})
             metadata_inner = details_inner.get("metadata", {})
-            dns_info = details_inner.get("dns_intelligence", {})
+            dns_info = pdf_analysis.get("dns_intelligence", {})
             
             # ─────────────── 🖥️ SYSTEM TERMINAL TELEMETRY ───────────────
             print("\n" + "="*60)
@@ -282,7 +295,7 @@ async def analyze_email_file(file: UploadFile = File(...)):
             final_risk_score = min(calculated_risk, 100)
             severity = "High" if final_risk_score >= 70 else "Medium" if final_risk_score >= 35 else "Low"
 
-            # 🎯 FUZZY CHARACTER FIX: Clean brackets and spaces to catch broken OCR patterns (e.g., gmail com -> gmail.com)
+            # Parse structural telemetry values (Enhanced bracket-stripping email regex)
             email_clean_text = re.sub(r'[<>]', ' ', extracted_text)
             email_clean_text = re.sub(r'\b(gmail|gpogle|yahoo|hotmail|live|outlook)\s+(com|net|org|edu)\b', r'\1.\2', email_clean_text, flags=re.IGNORECASE)
             
