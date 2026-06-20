@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import UploadBox from "../components/UploadBox";
 import PasteEmailBox from "../components/PasteEmailBox";
 import RiskCard from "../components/RiskCard";
@@ -20,6 +20,36 @@ export default function Dashboard({ dark, toggleTheme }) {
   const [scanning, setScanning] = useState(false);
   const [result, setResult]     = useState(null);
   const [error, setError]       = useState(null);
+
+  // Absolute positioning scale trackers for image highlight boxes
+  const imgRef = useRef(null);
+  const [imgScale, setImgScale] = useState({ x: 1, y: 1 });
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+
+  // Build temporary object preview URL for uploaded asset stream
+  useEffect(() => {
+    if (!file) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const handleRecalculateScale = () => {
+    if (!imgRef.current || !imgAnalysis.dimensions || imgAnalysis.dimensions === "Unknown") return;
+    const [origWidth, origHeight] = imgAnalysis.dimensions.split('x').map(Number);
+    setImgScale({
+      x: imgRef.current.clientWidth / origWidth,
+      y: imgRef.current.clientHeight / origHeight
+    });
+  };
+
+  useEffect(() => {
+    window.addEventListener('resize', handleRecalculateScale);
+    return () => window.removeEventListener('resize', handleRecalculateScale);
+  }, [result]);
 
   const handleAnalyze = async () => {
     setError(null);
@@ -103,7 +133,6 @@ export default function Dashboard({ dark, toggleTheme }) {
     }
   };
 
-  // Safe local parsing parameters mapped to handle the live result stream layout properties cleanly
   const imgAnalysis = result?.image_analysis || {};
   const cleanOcrText = imgAnalysis.extracted_content_raw || result?.extracted_text || "";
 
@@ -320,6 +349,55 @@ export default function Dashboard({ dark, toggleTheme }) {
               {result.file_type === "image" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   
+                  {/* DYNAMIC SPATIAL ANALYSIS OVERLAY PANEL */}
+                  {imagePreviewUrl && (
+                    <div style={{ ...imagePanelStyles.card, padding: "1rem" }}>
+                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", marginBottom: "0.75rem", fontWeight: 700 }}>
+                        // THREAT TARGET SPATIAL DETECTION HIGHLIGHTS
+                      </h3>
+                      <div style={{ position: 'relative', display: 'inline-block', width: '100%', overflow: 'hidden', borderRadius: 8 }}>
+                        <img 
+                          ref={imgRef}
+                          src={imagePreviewUrl} 
+                          alt="Scanned Threat Input Layout" 
+                          onLoad={handleRecalculateScale}
+                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                        {/* Loop over coordinate items to overlay boxes */}
+                        {imgAnalysis.ocr_blocks?.map((block, idx) => {
+                          if (!block.suspicious) return null;
+                          const minX = Math.min(...block.points.map(p => p[0]));
+                          const minY = Math.min(...block.points.map(p => p[1]));
+                          const maxX = Math.max(...block.points.map(p => p[0]));
+                          const maxY = Math.max(...block.points.map(p => p[1]));
+                          
+                          const isButtonAction = block.role === "button";
+
+                          return (
+                            <div
+                              key={idx}
+                              title={isButtonAction ? `🚨 UNVERIFIED INTERACTIVE TRAP: "${block.text}"` : `Flagged Token Area: "${block.text}"`}
+                              style={{
+                                position: 'absolute',
+                                top: `${minY * imgScale.y}px`,
+                                left: `${minX * imgScale.x}px`,
+                                width: `${(maxX - minX) * imgScale.x}px`,
+                                height: `${(maxY - minY) * imgScale.y}px`,
+                                border: isButtonAction ? '3px solid #a855f7' : '2px dashed #ef4444', 
+                                backgroundColor: isButtonAction ? 'rgba(168, 85, 247, 0.15)' : 'rgba(239, 68, 68, 0.18)',
+                                boxShadow: isButtonAction ? '0 0 12px rgba(168, 85, 247, 0.8)' : '0 0 6px rgba(239, 68, 68, 0.5)',
+                                borderRadius: isButtonAction ? '6px' : '0px',
+                                zIndex: 12,
+                                transition: 'transform 0.2s',
+                                cursor: 'pointer'
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* LAYER 1: HIGHLIGHTED CARD GLANCE STATISTICS */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
                     <div style={imagePanelStyles.card}>
@@ -415,15 +493,19 @@ export default function Dashboard({ dark, toggleTheme }) {
                     </div>
                   </div>
 
-                  <FindingsList
-                    dark={dark}
-                    reasons={result.reasons}
-                    highlightedContent={result.highlighted_content}
-                    urlsFound={result.urls_found}
-                    emlDetails={result.eml_details}
-                    fileType={result.file_type}
-                    confidenceLevel={result.confidence_level}
-                  />
+                  {/* 🎯 WRAPPED COMPONENT CONDITIONAL CHECKED GATE TO AVOID RENDER OF BLANK BOXES */}
+                  {((result.reasons && result.reasons.length > 0 && result.reasons[0]?.type !== "clean") || 
+                    (result.urls_found && result.urls_found.length > 0)) && (
+                    <FindingsList
+                      dark={dark}
+                      reasons={result.reasons}
+                      highlightedContent={result.highlighted_content}
+                      urlsFound={result.urls_found}
+                      emlDetails={result.eml_details}
+                      fileType={result.file_type}
+                      confidenceLevel={result.confidence_level}
+                    />
+                  )}
 
                 </div>
               ) : (
