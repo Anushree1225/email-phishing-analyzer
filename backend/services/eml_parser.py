@@ -122,8 +122,8 @@ def calculate_domain_age_days(domain: str) -> tuple:
 
         return age_days, f"{age_days} Days Old (NEWLY CREATED)"
 
-    except Exception:
-            pass
+        except Exception:
+                pass
 
     # ── VECTOR 2: HYBRID HTTPS API FALLBACK (LOCKS OUT PORT 43 ERRORS) ──
     try:
