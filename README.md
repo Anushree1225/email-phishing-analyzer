@@ -2,17 +2,11 @@
 
 An advanced cybersecurity tool developed as part of the **Information Security Internship Project** by **Anushree Verma** and **Arpita**.
 
-The platform helps users identify phishing threats by analyzing multiple input formats. Users can paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`, `.jpeg`). The system combines email header analysis, OCR, QR-code scanning, linguistic analysis, and risk scoring to generate an instant, easy-to-understand threat report.
+The platform helps users identify phishing threats by analyzing multiple input formats. Users can paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`, `.jpeg`).
+
+The system combines email header analysis, PDF parsing, image-based OCR, QR-code scanning, linguistic analysis, and risk scoring to generate an instant, easy-to-understand threat report.
 
 🔗 **Repository:** https://github.com/Anushree1225/email-phishing-analyzer
-
----
-
-## 📌 Overview
-
-Phishing attacks remain one of the most common cybersecurity threats faced by organizations and individuals. Attackers often use social engineering techniques such as urgency, fear, impersonation, and credential harvesting to trick users into revealing sensitive information.
-
-Email Phishing Analyzer assists users by automatically detecting suspicious indicators and presenting a comprehensive threat assessment dashboard.
 
 ---
 
@@ -71,7 +65,7 @@ The PDF parser:
 
 ### 📸 Screenshot & Image Forensics
 
-The image analysis pipeline performs:
+For image-based inputs (`.png`, `.jpg`, `.jpeg`), the analysis pipeline performs:
 
 * OCR-based text extraction using EasyOCR.
 * Detection of phishing keywords.
@@ -144,6 +138,15 @@ Each analyzed sample receives:
   * Critical
 * Detailed explanations for detected indicators
 * Recommended remediation actions
+
+---
+
+## ⚠️ Limitations
+
+* OCR analysis is currently supported only for image-based inputs (`.png`, `.jpg`, `.jpeg`).
+* OCR accuracy depends on image quality, resolution, and text visibility.
+* Image files do not contain email authentication metadata such as SPF, DKIM, or DMARC records.
+* The tool uses heuristic-based threat detection and should be used as an assistance system rather than the sole source for security decisions.
 
 ---
 
