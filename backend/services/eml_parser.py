@@ -88,12 +88,12 @@ def check_dns_records(domain: str) -> dict:
 
 def calculate_domain_age_days(domain: str) -> tuple:
     """
-    Queries global WHOIS registries with an automated fallback to open web 
+    Queries global WHOIS registries with an automated fallback to open web
     RDAP endpoints to guarantee domain age calculations work flawlessly on Windows.
     """
     if not domain or "." not in domain or "gmail.com" in domain or "yahoo.com" in domain:
         return None, "Skipped (Global Consumer Platform)"
-        
+
     # ── 🚀 FIXED: SUBDOMAIN STRIPPER PLACED HERE ──
     domain_parts = domain.split(".")
     if len(domain_parts) > 2:
@@ -102,57 +102,63 @@ def calculate_domain_age_days(domain: str) -> tuple:
             domain = ".".join(domain_parts[-3:])
         else:
             domain = ".".join(domain_parts[-2:])
-        
-    # ── VECTOR 1: ATTEMPT NATIVE WHOISDOMAIN SYSTEM HOOK ──
+
+    # ── VECTOR 1: ATTEMPT NATIVE WHOIS LOOKUP ──
     try:
-        try:
-    w = whois.whois(domain)
+        w = whois.whois(domain)
 
-    if w and w.creation_date:
-        creation_date = w.creation_date
+        if w and w.creation_date:
+            creation_date = w.creation_date
 
-        if isinstance(creation_date, list):
-            creation_date = creation_date[0]
+            if isinstance(creation_date, list):
+                creation_date = creation_date[0]
 
-        age_delta = datetime.now() - creation_date
-        age_days = age_delta.days
+            age_delta = datetime.now() - creation_date
+            age_days = age_delta.days
 
-        if age_days > 365:
-            return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
+            if age_days > 365:
+                return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
 
-        return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+            return age_days, f"{age_days} Days Old (NEWLY CREATED)"
 
-        except Exception:
-                pass
+    except Exception:
+        pass
 
     # ── VECTOR 2: HYBRID HTTPS API FALLBACK (LOCKS OUT PORT 43 ERRORS) ──
     try:
         # Query open-source registration analytics directory
         url = f"https://rdap.org/domain/{domain}"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+
         with urllib.request.urlopen(req, timeout=4.0) as response:
             data = json.loads(response.read().decode())
             events = data.get("events", [])
-            
+
             for event in events:
                 # Track down original registration event signature timestamp
                 if event.get("eventAction") == "registration":
-                    date_str = event.get("eventDate", "")[:10]  # Extracts YYYY-MM-DD
+                    date_str = event.get("eventDate", "")[:10]
                     creation_date = datetime.strptime(date_str, "%Y-%m-%d")
-                    
+
                     age_delta = datetime.now() - creation_date
                     age_days = age_delta.days
-                    
+
                     if age_days > 365:
                         return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
+
                     return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+
     except Exception as fallback_error:
         error_msg = str(fallback_error)
+
         if "404" in error_msg:
             return None, "Inactive (Domain Purged/Suspended by Registrar)"
+
         return None, f"Unknown (Registry Offline: {error_msg[:15]})"
-        
+
     return None, "Unknown (WHOIS Record Parsing Boundary)"
 
 
