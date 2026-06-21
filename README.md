@@ -1,39 +1,186 @@
 # 🛡️ Email Phishing Analyzer
 
-An advanced cybersecurity tool that helps identify phishing threats by analyzing multiple formats. The platform allows users to paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`). It uses linguistic text analysis, computer-vision OCR, QR code scanning, and mail header checks to generate an instant, easy-to-understand risk report.
+An advanced cybersecurity tool developed as part of the **Information Security Internship Project** by **Anushree Verma** and **Arpita**.
+
+The platform helps users identify phishing threats by analyzing multiple input formats. Users can paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`, `.jpeg`). The system combines email header analysis, OCR, QR-code scanning, linguistic analysis, and risk scoring to generate an instant, easy-to-understand threat report.
+
+🔗 **Repository:** https://github.com/Anushree1225/email-phishing-analyzer
+
+---
+
+## 📌 Overview
+
+Phishing attacks remain one of the most common cybersecurity threats faced by organizations and individuals. Attackers often use social engineering techniques such as urgency, fear, impersonation, and credential harvesting to trick users into revealing sensitive information.
+
+Email Phishing Analyzer assists users by automatically detecting suspicious indicators and presenting a comprehensive threat assessment dashboard.
 
 ---
 
 ## 🚀 Key Features
 
-* **Smart Input Detection**: Automatically detects what format you provided (text, image, PDF, or email file) and routes it to the right scanner.
-* **Email File (.eml) Scanner**: Extracts hidden email headers to check if security protocols like SPF, DKIM, and DMARC are configured correctly or if the sender is fake.
-* **PDF Link Extractor**: Parses portable documents to find subsurface links, hidden redirects, and suspicious language.
-* **Screenshot (Image) Forensics**: Uses EasyOCR to extract visible text from screenshots and highlights dangerous keywords or buttons on your dashboard. It also catches links hidden inside visual QR codes.
-* **Psychological Threat Profiling**: Scores pasted text or OCR data across three behavioral metrics to show the type of social engineering strategy being used:
-  * **Urgency Index**: Measures panic and time-pressure phrases (e.g., *"within 24 hours"*).
-  * **Fear Trigger Range**: Detects scare tactics (e.g., *"your account is suspended"*).
-  * **Harvesting Proximity**: Checks for explicit login and password requests.
-* **Domain Whitelisting**: Uses a built-in list of safe, high-reputation domains (like Google or Microsoft) to minimize false alarms on regular system notifications.
+### 📄 Multi-Format Analysis
+
+The system supports multiple input formats:
+
+* **Plain Text Emails** – Paste suspicious email content directly.
+* **EML Files** – Upload complete email files with metadata and headers.
+* **PDF Documents** – Analyze suspicious PDF attachments.
+* **Image Screenshots** – Upload screenshots of emails, messages, or phishing pages.
 
 ---
 
-## 🛠️ Tech Stack
+### 🧠 Smart Input Detection
 
-### 🖥️ Frontend (User Interface)
-* **React 18**: Built using clean functional components and hooks for quick state updates.
-* **Tailwind CSS**: Custom dark and light theme styles with a smooth, retro grid dashboard look.
-* **Lucide Icons**: Crisp, descriptive icons to mark different threats.
+Automatically detects the uploaded content type and routes it to the appropriate analysis pipeline.
 
-### 🐍 Backend (Server API)
-* **FastAPI**: Fast, asynchronous Python framework to process multiple scan tasks smoothly.
-* **Uvicorn**: High-performance server runner.
-* **Pydantic v2**: Handles strict data checks between frontend requests and backend responses.
+Supported formats include:
 
-### 📸 Utilities & Libraries
-* **EasyOCR**: Deep-learning text recognition pipeline used to scan images.
-* **OpenCV (cv2)**: Image processing library used to decode hidden QR code vectors.
-* **Regex (re)**: Regular expressions used to pull out sender emails, domains, and fix messy text typos.
+* `.txt`
+* `.eml`
+* `.pdf`
+* `.png`
+* `.jpg`
+* `.jpeg`
+
+---
+
+### 📧 Email Header Security Analysis
+
+For `.eml` files, the analyzer extracts hidden email metadata and validates:
+
+* SPF authentication
+* DKIM authentication
+* DMARC policies
+* Sender spoofing indicators
+* Header inconsistencies
+
+This helps determine whether an email may have originated from a forged or unauthorized source.
+
+---
+
+### 📑 PDF Threat Analysis
+
+The PDF parser:
+
+* Extracts embedded text.
+* Identifies suspicious URLs.
+* Detects social engineering language.
+* Searches for phishing indicators hidden inside documents.
+
+---
+
+### 📸 Screenshot & Image Forensics
+
+The image analysis pipeline performs:
+
+* OCR-based text extraction using EasyOCR.
+* Detection of phishing keywords.
+* Identification of suspicious links.
+* QR code extraction and decoding.
+* Highlighting of suspicious text regions inside the uploaded image.
+
+---
+
+### 🧩 Psychological Threat Profiling
+
+The analyzer measures behavioral characteristics commonly found in phishing attacks.
+
+#### **Urgency Index**
+
+Detects time-pressure language such as:
+
+> "Respond immediately"
+> "Within 24 hours"
+> "Act now"
+
+#### **Fear Trigger Range**
+
+Detects scare tactics such as:
+
+> "Your account has been suspended"
+> "Failure to comply will result in termination"
+
+#### **Credential Harvesting Proximity**
+
+Identifies attempts to obtain:
+
+* Passwords
+* Usernames
+* OTPs
+* Banking information
+* Login credentials
+
+---
+
+### 🔗 URL Inspection
+
+The system extracts and analyzes URLs found in:
+
+* Email bodies
+* PDFs
+* OCR text
+* QR codes
+
+Suspicious domains and malicious indicators contribute to the overall risk score.
+
+---
+
+### ✅ Domain Whitelisting
+
+Trusted domains from widely used services (for example Microsoft and Google) are treated with reduced suspicion to minimize false positives.
+
+---
+
+## 📊 Risk Scoring
+
+Each analyzed sample receives:
+
+* A numerical risk score (`0–100`)
+* Threat severity classification:
+
+  * Low
+  * Medium
+  * High
+  * Critical
+* Detailed explanations for detected indicators
+* Recommended remediation actions
+
+---
+
+## 🛠️ Technology Stack
+
+### 🖥️ Frontend
+
+* React 18
+* JavaScript (ES6+)
+* Tailwind CSS
+* Lucide React Icons
+
+Features include:
+
+* Dark/Light theme switching
+* Interactive dashboard
+* Drag-and-drop uploads
+* Threat visualization panels
+
+### 🐍 Backend
+
+* FastAPI
+* Python 3
+* Uvicorn
+* Pydantic v2
+
+The backend exposes REST APIs that process uploads and return structured threat intelligence reports.
+
+### 📸 Analysis & Utilities
+
+| Library              | Purpose                                 |
+| -------------------- | --------------------------------------- |
+| EasyOCR              | Optical Character Recognition           |
+| OpenCV               | Image preprocessing and QR detection    |
+| PyMuPDF              | PDF parsing and text extraction         |
+| Python email package | EML parsing and metadata extraction     |
+| Regex (`re`)         | Pattern matching and content extraction |
 
 ---
 
@@ -41,24 +188,143 @@ An advanced cybersecurity tool that helps identify phishing threats by analyzing
 
 ```text
 email-phishing-analyzer/
-├── backend/                    # FastAPI Backend Source
+│
+├── backend/
 │   ├── routers/
-│   │   └── analyze.py          # Primary API route for Text and File uploads
+│   │   └── analyze.py
+│   │
 │   ├── services/
-│   │   ├── content_analyzer.py # Plain text linguistic parser and scoring logic
-│   │   ├── eml_parser.py       # EML metadata extractor and header checker
-│   │   ├── pdf_parser.py       # PDF document parser module
-│   │   └── ocr_service.py      # OpenCV and EasyOCR layout handler
-│   └── main.py                 # Server startup and whitelisted CORS policy rules
-├── frontend/                   # React Frontend Source
+│   │   ├── content_analyzer.py
+│   │   ├── eml_parser.py
+│   │   ├── pdf_parser.py
+│   │   ├── ocr_service.py
+│   │   └── url_analyzer.py
+│   │
+│   └── main.py
+│
+├── frontend/
 │   └── src/
 │       ├── components/
-│       │   ├── FindingsList.jsx# Display controller for malicious headers and links
-│       │   ├── RiskCard.jsx    # Circular risk percentage indicator
-│       │   └── UploadBox.jsx   # Drag-and-drop file upload framework
+│       │   ├── FindingsList.jsx
+│       │   ├── RiskCard.jsx
+│       │   ├── UploadBox.jsx
+│       │   ├── RecommendedActions.jsx
+│       │   └── ScanProgress.jsx
+│       │
 │       └── pages/
-│           └── Dashboard.jsx   # Main view layout containing light/dark mode hooks
-└── docs/                       # Technical Documentation Repository
-    ├── API.md                  # Endpoint request and response formats
-    ├── Architecture.md         # Flowcharts and coordinate scaling math logic
-    └── Research.md             # Background context on phishing tactics
+│           └── Dashboard.jsx
+│
+├── docs/
+│   ├── API.md
+│   ├── Architecture.md
+│   └── Research.md
+│
+├── README.md
+└── requirements.txt
+```
+
+---
+
+## ⚙️ Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Anushree1225/email-phishing-analyzer.git
+cd email-phishing-analyzer
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux / macOS
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Run the backend:
+
+```bash
+uvicorn main:app --reload
+```
+
+Backend runs at:
+
+```text
+http://localhost:8000
+```
+
+### 3. Frontend Setup
+
+Open a new terminal:
+
+```bash
+cd frontend
+
+npm install
+
+npm run dev
+```
+
+Frontend runs at:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## 📡 API Endpoints
+
+### Analyze Text
+
+```http
+POST /analyze/text
+```
+
+### Analyze Uploaded File
+
+```http
+POST /analyze/file
+```
+
+Detailed request and response examples are available in:
+
+```text
+docs/API.md
+```
+
+---
+
+## 🔮 Future Enhancements
+
+* Real-time URL reputation lookup
+* Attachment malware scanning
+* Machine learning classification models
+* SIEM integration
+* Threat intelligence feed integration
+* User authentication and scan history
+* Report export functionality
+
+---
+
+## 👩‍💻 Authors
+
+**Anushree Verma**
+**Arpita**
+
+Developed under the **Information Security Internship Project**.
+
+---
+
+## 📄 License
+
+This project is developed for educational and internship purposes.
