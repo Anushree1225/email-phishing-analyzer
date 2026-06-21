@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pypdf==4.2.0
 opencv-python-headless==4.10.0.84
-numpy
+dnspython
+python-whois
 python-multipart
 requests
-dnspython

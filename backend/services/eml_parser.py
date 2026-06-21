@@ -3,7 +3,7 @@ from email import policy
 import re
 import dns.resolver  # 🚀 Used for live global DNS queries!
 from email.utils import parseaddr
-import whoisdomain as whois  # 🚀 Updated engine variant alias
+import whois
 from datetime import datetime
 import urllib.request       # 🚀 NEW: Fallback web channel engine
 import json                 # 🚀 NEW: Parses fallback JSON signatures
@@ -105,20 +105,25 @@ def calculate_domain_age_days(domain: str) -> tuple:
         
     # ── VECTOR 1: ATTEMPT NATIVE WHOISDOMAIN SYSTEM HOOK ──
     try:
-        w = whois.query(domain)
-        if w and w.creation_date:
-            creation_date = w.creation_date
-            if isinstance(creation_date, list):
-                creation_date = creation_date[0]
-                
-            age_delta = datetime.now() - creation_date
-            age_days = age_delta.days
-            
-            if age_days > 365:
-                return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
-            return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+        try:
+    w = whois.whois(domain)
+
+    if w and w.creation_date:
+        creation_date = w.creation_date
+
+        if isinstance(creation_date, list):
+            creation_date = creation_date[0]
+
+        age_delta = datetime.now() - creation_date
+        age_days = age_delta.days
+
+        if age_days > 365:
+            return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
+
+        return age_days, f"{age_days} Days Old (NEWLY CREATED)"
+
     except Exception:
-        pass  # Native socket failed or choked on Windows path, shifting to web API
+            pass
 
     # ── VECTOR 2: HYBRID HTTPS API FALLBACK (LOCKS OUT PORT 43 ERRORS) ──
     try:
