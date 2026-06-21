@@ -141,7 +141,6 @@ export default function Dashboard({ dark, toggleTheme }) {
       fontFamily: "'Space Mono', monospace",
       fontSize: "0.72rem",
       textAlign: "left",
-      // 🎨 FIX: Dynamic color routing ensures typography labels don't get trapped in black on dark blocks
       color: dark ? "#e2e8f0" : "#334155"
     },
     progressBarOuter: {
@@ -403,15 +402,15 @@ export default function Dashboard({ dark, toggleTheme }) {
                       </h3>
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                         <div style={textPanelStyles.progressRow}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Urgency Index</span><strong>{result.language_analysis?.urgency_score || 0}%</strong></div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Urgency Index</span><th>{result.language_analysis?.urgency_score || 0}%</th></div>
                           <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.urgency_score || 0}%`, height: "100%", background: "#ef4444" }} /></div>
                         </div>
                         <div style={textPanelStyles.progressRow}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Fear / Panic Trigger Range</span><strong>{result.language_analysis?.fear_score || 0}%</strong></div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Fear / Panic Trigger Range</span><th>{result.language_analysis?.fear_score || 0}%</th></div>
                           <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.fear_score || 0}%`, height: "100%", background: "#f59e0b" }} /></div>
                         </div>
                         <div style={textPanelStyles.progressRow}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Credential Harvesting Proximity</span><strong>{result.language_analysis?.credential_score || 0}%</strong></div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Credential Harvesting Proximity</span><th>{result.language_analysis?.credential_score || 0}%</th></div>
                           <div style={textPanelStyles.progressBarOuter}><div style={{ width: `${result.language_analysis?.credential_score || 0}%`, height: "100%", background: "#a855f7" }} /></div>
                         </div>
                       </div>
@@ -457,9 +456,57 @@ export default function Dashboard({ dark, toggleTheme }) {
 
                 </div>
               ) : result.file_type === "image" ? (
-                /* NATIVE RASTER IMAGE ASSSNET FORENSICS SPLIT VIEW */
+                /* 📸 RESTORED: NATIVE RASTER IMAGE ASSNET FORENSICS SPATIAL HIGHLIGHT VIEW */
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   
+                  {/* ⚡ SPATIAL CANVAS ANCHOR LOOP */}
+                  {imagePreviewUrl && (
+                    <div style={{ ...imagePanelStyles.card, padding: "1rem" }}>
+                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", marginBottom: "0.75rem", fontWeight: 700 }}>
+                        // THREAT TARGET SPATIAL DETECTION HIGHLIGHTS
+                      </h3>
+                      <div style={{ position: 'relative', display: 'inline-block', width: '100%', overflow: 'hidden', borderRadius: 8 }}>
+                        <img 
+                          ref={imgRef}
+                          src={imagePreviewUrl} 
+                          alt="Scanned Threat Input Layout" 
+                          onLoad={handleRecalculateScale}
+                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                        {imgAnalysis.ocr_blocks?.map((block, idx) => {
+                          if (!block.suspicious) return null;
+                          const minX = Math.min(...block.points.map(p => p[0]));
+                          const minY = Math.min(...block.points.map(p => p[1]));
+                          const maxX = Math.max(...block.points.map(p => p[0]));
+                          const maxY = Math.max(...block.points.map(p => p[1]));
+                          
+                          const isButtonAction = block.role === "button";
+
+                          return (
+                            <div
+                              key={idx}
+                              title={isButtonAction ? `🚨 UNVERIFIED INTERACTIVE TRAP: "${block.text}"` : `Flagged Token Area: "${block.text}"`}
+                              style={{
+                                position: 'absolute',
+                                top: `${minY * imgScale.y}px`,
+                                left: `${minX * imgScale.x}px`,
+                                width: `${(maxX - minX) * imgScale.x}px`,
+                                height: `${(maxY - minY) * imgScale.y}px`,
+                                border: isButtonAction ? '3px solid #a855f7' : '2px dashed #ef4444', 
+                                backgroundColor: isButtonAction ? 'rgba(168, 85, 247, 0.15)' : 'rgba(239, 68, 68, 0.18)',
+                                boxShadow: isButtonAction ? '0 0 12px rgba(168, 85, 247, 0.8)' : '0 0 6px rgba(239, 68, 68, 0.5)',
+                                borderRadius: isButtonAction ? '6px' : '0px',
+                                zIndex: 12,
+                                transition: 'transform 0.2s',
+                                cursor: 'pointer'
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* LAYER 1: HIGHLIGHTED CARD GLANCE STATISTICS */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
                     <div style={imagePanelStyles.card}>
