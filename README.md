@@ -309,7 +309,6 @@ docs/API.md
 
 ## 🔮 Future Enhancements
 
-* Real-time URL reputation lookup
 * Attachment malware scanning
 * Machine learning classification models
 * SIEM integration
@@ -322,7 +321,7 @@ docs/API.md
 ## 👩‍💻 Authors
 
 **Anushree Verma**
-**Arpita**
+**Arpita Verma**
 
 Developed under the **Information Security Internship Project**.
 
