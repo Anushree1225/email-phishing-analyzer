@@ -1,8 +1,11 @@
 fastapi
 uvicorn
-pypdf==4.2.0
-opencv-python-headless==4.10.0.84
+python-multipart
+pypdf
+opencv-python-headless
+easyocr==1.7.2
+torch
+torchvision
 dnspython
 python-whois
-python-multipart
 requests
