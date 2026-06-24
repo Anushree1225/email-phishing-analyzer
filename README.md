@@ -181,7 +181,7 @@ The backend exposes REST APIs that process uploads and return structured threat 
 | -------------------- | --------------------------------------- |
 | EasyOCR              | Optical Character Recognition           |
 | OpenCV               | Image preprocessing and QR detection    |
-| PyMuPDF              | PDF parsing and text extraction         |
+| pypdf              | PDF parsing and text extraction         |
 | Python email package | EML parsing and metadata extraction     |
 | Regex (`re`)         | Pattern matching and content extraction |
 
