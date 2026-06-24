@@ -1,8 +1,8 @@
 # 🛡️ Email Phishing Analyzer
 
-An advanced cybersecurity tool developed as part of the **Information Security Internship Project** by **Anushree Verma** and **Arpita**.
+An advanced cybersecurity tool developed as part of the **Information Security Internship Project** by **Anushree Verma** and **Arpita Verma**.
 
-The platform helps users identify phishing threats by analyzing multiple input formats. Users can paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`, `.jpeg`).
+The platform helps users identify phishing threats by analyzing multiple input formats of emails. Users can paste raw email text or upload `.eml` files, `.pdf` documents, and email screenshots (`.png`, `.jpg`, `.jpeg`).
 
 The system combines email header analysis, PDF parsing, image-based OCR, QR-code scanning, linguistic analysis, and risk scoring to generate an instant, easy-to-understand threat report.
 
@@ -18,8 +18,8 @@ The system supports multiple input formats:
 
 * **Plain Text Emails** – Paste suspicious email content directly.
 * **EML Files** – Upload complete email files with metadata and headers.
-* **PDF Documents** – Analyze suspicious PDF attachments.
-* **Image Screenshots** – Upload screenshots of emails, messages, or phishing pages.
+* **PDF Format** – Analyze PDF generate format of an email.
+* **Image Screenshots** – Upload screenshots of emails..
 
 ---
 
@@ -115,7 +115,7 @@ The system extracts and analyzes URLs found in:
 * OCR text
 * QR codes
 
-Suspicious domains and malicious indicators contribute to the overall risk score.
+Suspicious domains and malicious indicators contribute to the overall risk score. VirustTotal API is used here, where in the email is send to the VirusTotal to check the status of the url if it is flagged as suspicious or not and it is reported back.
 
 ---
 
@@ -135,9 +135,9 @@ Each analyzed sample receives:
   * Low
   * Medium
   * High
-  * Critical
 * Detailed explanations for detected indicators
 * Recommended remediation actions
+* Each Format of input presents a different set of reulsts ananlysis page.
 
 ---
 
@@ -181,7 +181,7 @@ The backend exposes REST APIs that process uploads and return structured threat 
 | -------------------- | --------------------------------------- |
 | EasyOCR              | Optical Character Recognition           |
 | OpenCV               | Image preprocessing and QR detection    |
-| pypdf              | PDF parsing and text extraction         |
+| pypdf                | PDF parsing and text extraction         |
 | Python email package | EML parsing and metadata extraction     |
 | Regex (`re`)         | Pattern matching and content extraction |
 
