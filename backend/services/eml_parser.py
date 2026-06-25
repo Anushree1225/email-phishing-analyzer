@@ -17,6 +17,7 @@ def clean_html_tags(html_text: str) -> str:
     clean_text = re.sub(r'\s+', ' ', clean_text)
     return clean_text.strip()
 
+
 def check_dns_records(domain: str) -> dict:
     """
     Queries live global DNS records and generates tactical SOC analyst interpretations
@@ -28,7 +29,16 @@ def check_dns_records(domain: str) -> dict:
         "spf_record": "NOT FOUND",
         "spf_analyst_note": "No SPF configuration found. Senders cannot be verified.",
         "dmarc_policy": "NOT FOUND",
-        "dmarc_analyst_note": "No DMARC policy found. Domain is highly vulnerable to identity spoofing."
+        "dmarc_analyst_note": "No DMARC policy found. Domain is highly vulnerable to identity spoofing.",
+        # 🎯 ADDED: Structural mapping dictionary for individual DMARC record sub-tags
+        "dmarc_tags": {
+            "v": "N/A",
+            "p": "N/A",
+            "pct": "N/A",
+            "rua": "N/A",
+            "ruf": "N/A",
+            "fo": "N/A"
+        }
     }
     
     if not domain or "." not in domain:
@@ -72,6 +82,11 @@ def check_dns_records(domain: str) -> dict:
             if txt_string.startswith("v=DMARC1"):
                 dns_report["dmarc_policy"] = txt_string
                 
+                # 🎯 PARSE DMARC SUB-TAGS: Extracts specific rules (p, pct, rua, ruf, fo) out of the semicolon array
+                tag_matches = re.findall(r'\b(v|p|pct|rua|ruf|fo)\s*=\s*([^;]+)', txt_string, re.IGNORECASE)
+                for tag, val in tag_matches:
+                    dns_report["dmarc_tags"][tag.lower()] = val.strip()
+
                 # Evaluate DMARC alignment actions
                 if "p=reject" in txt_string:
                     dns_report["dmarc_analyst_note"] = "Strict Shield (p=reject). Any mail failing SPF/DKIM alignment is completely dropped at destination."
@@ -97,7 +112,6 @@ def calculate_domain_age_days(domain: str) -> tuple:
     # ── 🚀 FIXED: SUBDOMAIN STRIPPER PLACED HERE ──
     domain_parts = domain.split(".")
     if len(domain_parts) > 2:
-        # Handles regional/academic domain extensions gracefully (e.g., xie.edu.in or cii.co.in)
         if domain_parts[-2] in ["com", "co", "org", "edu", "gov", "net", "res", "ac"]:
             domain = ".".join(domain_parts[-3:])
         else:
@@ -106,10 +120,8 @@ def calculate_domain_age_days(domain: str) -> tuple:
     # ── VECTOR 1: ATTEMPT NATIVE WHOIS LOOKUP ──
     try:
         w = whois.whois(domain)
-
         if w and w.creation_date:
             creation_date = w.creation_date
-
             if isinstance(creation_date, list):
                 creation_date = creation_date[0]
 
@@ -118,27 +130,20 @@ def calculate_domain_age_days(domain: str) -> tuple:
 
             if age_days > 365:
                 return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
-
             return age_days, f"{age_days} Days Old (NEWLY CREATED)"
-
     except Exception:
         pass
 
     # ── VECTOR 2: HYBRID HTTPS API FALLBACK (LOCKS OUT PORT 43 ERRORS) ──
     try:
-        # Query open-source registration analytics directory
         url = f"https://rdap.org/domain/{domain}"
-        req = urllib.request.Request(
-            url,
-            headers={'User-Agent': 'Mozilla/5.0'}
-        )
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 
         with urllib.request.urlopen(req, timeout=4.0) as response:
             data = json.loads(response.read().decode())
             events = data.get("events", [])
 
             for event in events:
-                # Track down original registration event signature timestamp
                 if event.get("eventAction") == "registration":
                     date_str = event.get("eventDate", "")[:10]
                     creation_date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -148,15 +153,11 @@ def calculate_domain_age_days(domain: str) -> tuple:
 
                     if age_days > 365:
                         return age_days, f"{round(age_days / 365, 1)} Years Old ({age_days} Days)"
-
                     return age_days, f"{age_days} Days Old (NEWLY CREATED)"
-
     except Exception as fallback_error:
         error_msg = str(fallback_error)
-
         if "404" in error_msg:
             return None, "Inactive (Domain Purged/Suspended by Registrar)"
-
         return None, f"Unknown (Registry Offline: {error_msg[:15]})"
 
     return None, "Unknown (WHOIS Record Parsing Boundary)"
@@ -179,19 +180,18 @@ def parse_eml(file_bytes: bytes) -> dict:
     received_spf_header = msg.get("Received-SPF", "")
     
     # ── 🎭 TRACE VECTOR: HIDDEN RETURN-PATH EXTRACTION ──
-    return_path_header = msg.get("Return-Path", "").strip("<>")
+    return_path_header = msg.get("Return-Path", "").strip("<>").strip()
     if not return_path_header:
-        return_path_header = msg.get("Envelope-From", msg.get("X-Return-Path", "Not Specified")).strip("<>")
+        return_path_header = msg.get("Envelope-From", msg.get("X-Return-Path", "Not Specified")).strip("<>").strip()
 
-    # Extract sender domains clean matching strings
-    sender_domain = ""
-    domain_match = re.search(r'@([\w\.-]+)', email_from)
-    if domain_match:
-        sender_domain = domain_match.group(1).strip(">").strip("]").lower()
+    # 🎯 FIX: Robust email address splitting rules lockout fake mismatch flags
+    _, parsed_from_email = parseaddr(email_from.lower())
+    sender_domain = parsed_from_email.split("@")[-1].strip() if "@" in parsed_from_email else ""
 
-    _, reply_to_email = parseaddr(reply_to)
-    reply_domain = reply_to_email.split("@")[-1].lower() if "@" in reply_to_email else ""
-    return_domain = return_path_header.split("@")[-1].lower() if "@" in return_path_header else ""
+    _, reply_to_email = parseaddr(reply_to.lower())
+    reply_domain = reply_to_email.split("@")[-1].strip() if "@" in reply_to_email else ""
+    
+    return_domain = return_path_header.split("@")[-1].lower().strip() if "@" in return_path_header else ""
 
     # 2. Execute Live External DNS Lookup Vector
     dns_metrics = check_dns_records(sender_domain)
@@ -218,7 +218,7 @@ def parse_eml(file_bytes: bytes) -> dict:
     if dkim_match: dkim_status = dkim_match.group(1).upper()
     if dmarc_match: dmarc_status = dmarc_match.group(1).upper()
 
-    header_mismatch = reply_to != "Not Specified" and email_from != reply_to
+    header_mismatch = reply_to != "Not Specified" and sender_domain != reply_domain
     return_path_mismatch = return_domain and sender_domain and (return_domain != sender_domain)
 
     # 4. Multi-Layer Multipart Body Extraction & Attachment Identification
@@ -272,18 +272,18 @@ def parse_eml(file_bytes: bytes) -> dict:
           "redirect_chain": [url] if is_url_suspicious else []
         })
 
-   # 🎛️ RUN VIRUSTOTAL MODULAR CALL (Decoupled completely from your risk math)
+    # 🎛️ RUN VIRUSTOTAL MODULAR CALL
     url_intelligence_report = []
     try:
         url_intelligence_report = analyze_urls(body_source_for_urls)
     except Exception:
         url_intelligence_report = []
 
-    # ── 🚨 ✅ REQUIREMENT 2 FIXED: Pre-compute the flat count token for the ribbon bar ──
     vt_danger_count = sum(
         1 for u in url_intelligence_report 
         if isinstance(u, dict) and str(u.get("status", "")).lower() in ["malicious", "suspicious"]
     )
+
     # 🧮 5. THE RISK SCORING WEIGHT ENGINE
     calculated_risk = 0
     reasons = []
@@ -291,11 +291,11 @@ def parse_eml(file_bytes: bytes) -> dict:
 
     if header_mismatch:
         calculated_risk += 20
-        reasons.append({"type": "spoofed_header", "message": "Reply-To address differs from display sender domain."})
+        reasons.append({"type": "spoofed_header", "message": f"Reply-To address mismatch: sender domain ({sender_domain}) differs from reply domain ({reply_domain})."})
     
     if return_path_mismatch and return_path_header != "Not Specified":
         calculated_risk += 25
-        reasons.append({"type": "spoofed_header", "message": f"Critical Mismatch: Return-Path ({return_domain}) does not align with Sender Domain ({sender_domain})."})
+        reasons.append({"type": "spoofed_header", "message": f"Critical Mismatch: Return-Path domain ({return_domain}) does not align with Sender Domain ({sender_domain})."})
 
     if spf_status == "FAIL":
         calculated_risk += 30
@@ -316,12 +316,10 @@ def parse_eml(file_bytes: bytes) -> dict:
         calculated_risk += 25
         reasons.append({"type": "lookalike_domain", "message": "Critical: Sending domain has no valid MX mail servers configured."})
 
-    # ⏳ Domain Age Risk Modifier Trigger
     if domain_age_days is not None and domain_age_days <= 60:
         calculated_risk += 30
         reasons.append({"type": "lookalike_domain", "message": f"High Alert: Sending domain is newly registered ({domain_age_string}). Typical burner domain indicator."})
 
-    # Attachment Danger Extensions Modifier
     dangerous_extensions = ["exe", "bat", "scr", "vbs", "cmd", "lnk", "zip", "rar"]
     for attach in attachments_discovered:
         if attach["extension"] in dangerous_extensions:
@@ -338,28 +336,25 @@ def parse_eml(file_bytes: bytes) -> dict:
         reasons.append({"type": "credential_request", "message": "Text structure indicates a verification or credential capture attempt."})
 
     final_risk_score = min(calculated_risk, 100)
-    
     severity = "High" if final_risk_score >= 70 else "Medium" if final_risk_score >= 35 else "Low"
     if severity == "High":
         recommended_actions = ["Do not interact with this email", "Delete the email immediately", "Report it to your technical security team"]
     elif severity == "Medium":
         recommended_actions = ["Exercise extreme caution when clicking any links", "Verify sender identity through an alternative channel"]
 
-    # Ensure this matches exactly what your main routing response payload parses
     payload = {
         "risk_score": final_risk_score,
         "threat_score": final_risk_score,
         "severity": severity,
-        "danger_urls": vt_danger_count,  # Matches result.danger_urls
+        "danger_urls": vt_danger_count,
         "reasons": reasons,
         "threat_indicators": reasons,
         "recommended_action": recommended_actions,
         "urls_found": urls_structured_registry,
-        "highlighted_content": [], # Ensure fallback array if expected by Dashboard
-        "scanned_at": datetime.now().isoformat(), # Fixes the date parsing error
+        "highlighted_content": [],
+        "scanned_at": datetime.now().isoformat(),
         "scan_id": "SCAN-" + sender_domain.split('.')[0].upper()[:8] if sender_domain else "SCAN-UNKNOWN",
         
-        # ── Grouping this explicitly so FindingsList read layers resolve safely ──
         "eml_details": {
             "metadata": {
                 "from": email_from,
@@ -368,7 +363,7 @@ def parse_eml(file_bytes: bytes) -> dict:
                 "reply_to": reply_to,
                 "return_path": return_path_header,
                 "sender_domain": sender_domain,
-                "domain_age": domain_age_string, 
+                "domain_age": domain_age_string,
                 "header_mismatch": header_mismatch or return_path_mismatch
             },
             "security_protocols": {

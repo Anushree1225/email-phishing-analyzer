@@ -30,12 +30,11 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   
   const isPdf = fileType === "pdf" || emlDetails?.file_type === "pdf";
   const isImage = fileType === "image";
-  const isText = fileType === "text"; // 🎯 Track plain text scans
+  const isText = fileType === "text";
   
   const intelligentUrls = emlDetails?.url_intelligence || [];
   const [showClean, setShowClean] = useState(false);
 
-  // Helper badge function for EML signatures
   const renderAuthBadge = (protocol, status) => {
     const isPass = status === "PASS";
     const isFail = status === "FAIL";
@@ -79,20 +78,10 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
     border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
     borderRadius: 16,
-    padding: isText ? "0px" : "1.75rem", // 🎨 Smooth look for text mode bounds
+    padding: isText ? "0px" : "1.75rem",
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
-    boxShadow: isText ? "none" : "initial",
-    borderNone: isText ? "none" : "initial",
-  };
-
-  // Plain-text sub-container configuration to avoid card-stack nesting borders
-  const textSubCardStyle = {
-    background: dark ? "rgba(15,23,42,0.4)" : "rgba(255,255,255,0.7)",
-    border: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`,
-    padding: "1.25rem",
-    borderRadius: 14,
   };
 
   const tableLabelStyle = {
@@ -115,8 +104,17 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
     borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`
   };
 
+  const dmarcTagStyle = {
+    padding: "0.4rem 0.6rem",
+    fontSize: "0.7rem",
+    fontFamily: "'Space Mono', monospace",
+    borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
+    color: dark ? "#cbd5e1" : "#475569"
+  };
+
   const metaSource = emlDetails?.metadata || {};
   const dnsSource = emlDetails?.dns_intelligence || {};
+  const dmarcTags = dnsSource?.dmarc_tags || {};
 
   const hasThreats = reasons && reasons.length > 0 && reasons[0]?.type !== "clean";
 
@@ -138,7 +136,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
   return (
     <div style={isText ? { display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%" } : cardStyle}>
 
-      {/* ── 🔒 BOX 1: SECURITY PROTOCOLS / CONFIDENCE (BYPASS IF PLAIN TEXT) ── */}
+      {/* ── 🔒 BOX 1: PROTOCOL VERIFICATION ── */}
       {!isImage && !isText && (
         <>
           {isPdf ? (
@@ -171,7 +169,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </>
       )}
 
-      {/* ── 📬 BOX 2: TRANSPATH METADATA (BYPASS IF PLAIN TEXT) ── */}
+      {/* ── 📬 BOX 2: METADATA PANEL ── */}
       {!isImage && !isText && (
         <div style={{
           padding: "0.9rem",
@@ -212,7 +210,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── ⚠ BOX 3: THREAT INDICATORS ROW ── */}
       {hasThreats && (
-        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
+        <div style={{ textAlign: "left" }}>
           <SectionTitle label="⚠ Threat Indicators" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {reasons.map((r, i) => (
@@ -230,7 +228,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
         </div>
       )}
 
-      {/* ── 💡 BOX 4: TECHNICAL EXTRACTIONS (BYPASS IF PLAIN TEXT) ── */}
+      {/* ── 💡 BOX 4: TECHNICAL EXTRACTIONS & DMARC RECORD TAGS ── */}
       {dnsSource && !isImage && !isText && (
         <div style={{
           marginTop: "0.25rem", padding: "1rem 1.25rem",
@@ -258,15 +256,6 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                     <td style={tableLabelStyle}>TOTAL VISUAL PAGES</td>
                     <td style={tableValueStyle}>{dnsSource?.page_count || 1} Page(s) processed</td>
                   </tr>
-                  <tr>
-                    <td style={tableLabelStyle}>METADATA CREATOR STAMP</td>
-                    <td style={tableValueStyle}>
-                      <div style={{ color: "#38bdf8", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy || "N/A"}</div>
-                      <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
-                        🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>Forensic Analyst Note:</span> {dnsSource?.dmarc_analyst_note || "N/A"}
-                      </div>
-                    </td>
-                  </tr>
                 </>
               ) : (
                 <>
@@ -293,10 +282,67 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
               )}
             </tbody>
           </table>
+
+          {/* 🎯 DMARC TAG MATRIX BREAKDOWN WITH RESTORED DIVIDER LINE */}
+          {dnsSource.dmarc_policy && dnsSource.dmarc_policy !== "NOT FOUND" && (
+            <div style={{ 
+              marginTop: "1.25rem",
+              paddingTop: "1.25rem",
+              borderTop: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` // 🎨 Matches the native row separation lines
+            }}>
+              <div style={{ color: dark ? "#818cf8" : "#4f46e5", fontWeight: 700, fontSize: "0.62rem", letterSpacing: 1, marginBottom: "0.5rem", fontFamily: "'Space Mono', monospace" }}>
+                📋 DMARC LIVE REGISTRY SUB-TAG MAP
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse", background: dark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.01)", borderRadius: "8px" }}>
+                <thead>
+                  <tr style={{ background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}>
+                    <th style={{ ...dmarcTagStyle, fontWeight: 700, width: "70px" }}>Tag</th>
+                    <th style={{ ...dmarcTagStyle, fontWeight: 700, width: "130px" }}>Value</th>
+                    <th style={{ ...dmarcTagStyle, fontWeight: 700 }}>Functional Descriptor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>v</strong></td>
+                    <td style={{ ...dmarcTagStyle, color: "#38bdf8" }}>{dmarcTags.v || "DMARC1"}</td>
+                    <td style={dmarcTagStyle}>Protocol Version Rule Definition Specification</td>
+                  </tr>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>p</strong></td>
+                    <td style={{ ...dmarcTagStyle, color: "#ef4444", fontWeight: 700 }}>{dmarcTags.p || "N/A"}</td>
+                    <td style={dmarcTagStyle}>Policy Enforcement action for failed message blocks</td>
+                  </tr>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>pct</strong></td>
+                    <td style={{ ...dmarcTagStyle, color: "#f59e0b" }}>{dmarcTags.pct || "100"}</td>
+                    <td style={dmarcTagStyle}>Percentage of outbound streams subjected to alignment constraints</td>
+                  </tr>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>rua</strong></td>
+                    <td style={{ ...dmarcTagStyle, fontSize: "0.65rem" }}>{dmarcTags.rua || "N/A"}</td>
+                    <td style={dmarcTagStyle}>Destination endpoint for XML aggregate report delivery arrays</td>
+                  </tr>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>ruf</strong></td>
+                    <td style={{ ...dmarcTagStyle, fontSize: "0.65rem" }}>{dmarcTags.ruf || "N/A"}</td>
+                    <td style={dmarcTagStyle}>Destination endpoint for forensic failure alert streams</td>
+                  </tr>
+                  <tr>
+                    <td style={dmarcTagStyle}><strong>fo</strong></td>
+                    <td style={dmarcTagStyle}>{dmarcTags.fo || "0"}</td>
+                    <td style={dmarcTagStyle}>Failure reporting options logic triggers configured</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 10, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "6px 10px", borderRadius: "4px", display: "block" }}>
+                🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Alignment Insight:</span> {dnsSource?.dmarc_analyst_note}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY LAYER (BYPASS IF PLAIN TEXT) ── */}
+      {/* ── 📁 BOX 5: ATTACHMENT INVENTORY ── */}
       {emlDetails?.attachments && emlDetails.attachments.length > 0 && !isText && (
         <div style={{ textAlign: "left" }}>
           <SectionTitle label="📎 Attachment Inventory" dark={dark} />
@@ -323,13 +369,12 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── 🔍 BOX 6: SUSPICIOUS CONTENT LAYER ── */}
       {highlightedContent?.length > 0 && (
-        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
+        <div style={{ textAlign: "left" }}>
           <SectionTitle label="🔍 Suspicious Content Sentences" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {highlightedContent.map((h, i) => (
               <div key={i} style={{ padding: "0.65rem 0.9rem", background: dark ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.28)", borderRadius: 8 }}>
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#f59e0b", fontWeight: 700, marginBottom: 3 }}>"{h.text}"</div>
-                {/* 🎯 FIX: Updated dynamic text token coloring block to respond smoothly on dark background hooks */}
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: dark ? "#cbd5e1" : "#475569" }}>Reason: {h.reason}</div>
               </div>
             ))}
@@ -339,7 +384,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
 
       {/* ── 🔗 BOX 7: URL INTELLIGENCE ROW ── */}
       {((finalMalicious && finalMalicious.length > 0) || (finalClean && finalClean.length > 0) || (urlsFound && urlsFound.length > 0)) && (
-        <div style={{ textAlign: "left" }} className={isText ? "text-sub-block" : ""}>
+        <div style={{ textAlign: "left" }}>
           <SectionTitle label="🔗 URL Intelligence" dark={dark} />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             
