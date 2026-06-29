@@ -272,10 +272,16 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                   <tr>
                     <td style={tableLabelStyle}>SPF RECORD</td>
                     <td style={tableValueStyle}>
-                      <div style={{ color: dnsSource?.spf_record?.includes("FAILED") ? "#ef4444" : "#22c55e", fontSize: "0.68rem" }}>{dnsSource?.spf_record}</div>
+                      <div style={{ color: dnsSource?.spf_record?.includes("FAILED") || dnsSource?.spf_record?.includes("Not Found") ? "#ef4444" : "#22c55e", fontSize: "0.68rem" }}>{dnsSource?.spf_record}</div>
                       <div style={{ fontSize: "0.62rem", color: dark ? "#94a3b8" : "#475569", marginTop: 6, fontFamily: "sans-serif", background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
                         🧠 <span style={{ fontWeight: 600, color: dark ? "#38bdf8" : "#0284c7" }}>SOC Analyst Guidance:</span> {dnsSource?.spf_analyst_note}
                       </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={tableLabelStyle}>DMARC RECORD</td>
+                    <td style={tableValueStyle}>
+                      <div style={{ color: dnsSource?.dmarc_policy?.includes("FAILED") || dnsSource?.dmarc_policy?.includes("Not Found") ? "#ef4444" : "#22c55e", fontSize: "0.68rem" }}>{dnsSource?.dmarc_policy}</div>
                     </td>
                   </tr>
                 </>
@@ -283,12 +289,15 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
             </tbody>
           </table>
 
-          {/* 🎯 DMARC TAG MATRIX BREAKDOWN WITH RESTORED DIVIDER LINE */}
-          {dnsSource.dmarc_policy && dnsSource.dmarc_policy !== "NOT FOUND" && (
+          {/* 🎯 FIXED: Renders the sub-tag table ONLY if a real record was found (Bypasses "DMARC Not Found" and PDF files) */}
+          {dnsSource.dmarc_policy && 
+           dnsSource.dmarc_policy !== "NOT FOUND" && 
+           dnsSource.dmarc_policy !== "DMARC Not Found" && 
+           !isPdf && (
             <div style={{ 
               marginTop: "1.25rem",
               paddingTop: "1.25rem",
-              borderTop: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` // 🎨 Matches the native row separation lines
+              borderTop: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`
             }}>
               <div style={{ color: dark ? "#818cf8" : "#4f46e5", fontWeight: 700, fontSize: "0.62rem", letterSpacing: 1, marginBottom: "0.5rem", fontFamily: "'Space Mono', monospace" }}>
                 📋 DMARC LIVE REGISTRY SUB-TAG MAP
@@ -309,7 +318,7 @@ export default function FindingsList({ dark, reasons, highlightedContent, urlsFo
                   </tr>
                   <tr>
                     <td style={dmarcTagStyle}><strong>p</strong></td>
-                    <td style={{ ...dmarcTagStyle, color: "#ef4444", fontWeight: 700 }}>{dmarcTags.p || "N/A"}</td>
+                    <td style={{ ...dmarcTagStyle, color: dmarcTags.p === "reject" || dmarcTags.p === "quarantine" ? "#ef4444" : "#f59e0b", fontWeight: 700 }}>{dmarcTags.p || "N/A"}</td>
                     <td style={dmarcTagStyle}>Policy Enforcement action for failed message blocks</td>
                   </tr>
                   <tr>
