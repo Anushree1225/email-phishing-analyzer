@@ -6,6 +6,7 @@ import FindingsList from "../components/FindingsList";
 import RecommendedActions from "../components/RecommendedActions";
 import { analyzeEmail, analyzeEmailFile } from "../services/api";
 import ScanProgress from "../components/ScanProgress";
+import jsPDF from "jspdf";
 
 /**
  * Dashboard - main page
@@ -97,6 +98,264 @@ export default function Dashboard({ dark, toggleTheme }) {
     if (fileInput) fileInput.value = "";
   };
 
+  // Function to generate and download the professional SOC PDF report
+  const downloadPDF = () => {
+    if (!result) return;
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 18;
+
+    // Helper to add new page if content exceeds height limits
+    const checkPageBreak = (neededHeight = 15) => {
+      if (y + neededHeight > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    // Helper to draw clean modern section boxes
+    const drawSectionBox = (title, startY, height) => {
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, startY, contentWidth, height, 2, 2, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(title.toUpperCase(), margin + 5, startY + 7);
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(margin + 5, startY + 10, margin + contentWidth - 5, startY + 10);
+    };
+
+    // 1. HEADER
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(15, 23, 42);
+    doc.text("EMAIL PHISHING ANALYZER", pageWidth / 2, y, { align: "center" });
+
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Security Analysis Report", pageWidth / 2, y, { align: "center" });
+
+    y += 5;
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+
+    // 2. SCAN INFORMATION
+    y += 8;
+    const scanId = result.scan_id || result.id || `SCAN-${Date.now().toString(36).toUpperCase()}`;
+    const scanDate = result.scanned_at ? new Date(result.scanned_at).toLocaleString() : new Date().toLocaleString();
+    const generatedOn = new Date().toLocaleString();
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Scan ID:`, margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${scanId}`, margin + 18, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`Scan Date:`, margin + 70, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${scanDate}`, margin + 88, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`Generated On:`, margin + 135, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${generatedOn}`, margin + 158, y);
+
+    // 3. RISK SUMMARY BOX
+    y += 8;
+    const score = result.risk_score ?? result.score ?? 0;
+    const severity = (result.severity || (score > 70 ? "HIGH" : score > 30 ? "MEDIUM" : "LOW")).toUpperCase();
+
+    drawSectionBox("Risk Summary", y, 22);
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Risk Score : `, margin + 8, y + 16);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${score} / 100`, margin + 32, y + 16);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`Severity : `, margin + 90, y + 16);
+
+    // Color code Severity badge (High -> Red, Medium -> Orange, Low -> Green)
+    if (severity.includes("HIGH")) doc.setTextColor(220, 38, 38);
+    else if (severity.includes("MEDIUM")) doc.setTextColor(217, 119, 6);
+    else doc.setTextColor(22, 163, 74);
+
+    doc.text(`${severity}`, margin + 110, y + 16);
+    y += 28;
+
+    // 4. THREAT INDICATORS
+    if (result.reasons && result.reasons.length > 0) {
+      checkPageBreak(30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Threat Indicators", margin, y);
+      y += 3;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+
+      result.reasons.forEach((reason) => {
+        checkPageBreak(8);
+        const reasonText = typeof reason === "string" ? reason : reason.title || reason.description || reason.type || JSON.stringify(reason);
+        const wrappedLines = doc.splitTextToSize(`• ${reasonText}`, contentWidth - 5);
+        doc.text(wrappedLines, margin + 2, y);
+        y += wrappedLines.length * 4.5;
+      });
+      y += 4;
+    }
+
+    // 5. URL ANALYSIS
+    if (result.urls_found && result.urls_found.length > 0) {
+      checkPageBreak(30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Detected URLs", margin, y);
+      y += 3;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      result.urls_found.forEach((u) => {
+        const urlStr = typeof u === "string" ? u : u.url || u.link || "";
+        const status = u.status || (u.suspicious ? "Suspicious" : "Clean");
+        const redirects = u.redirect_chain || u.redirects || [];
+
+        checkPageBreak(20);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        const urlLines = doc.splitTextToSize(urlStr, contentWidth - 10);
+        doc.text(urlLines, margin + 2, y);
+        y += urlLines.length * 4.5;
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Status : `, margin + 5, y);
+        
+        if (status.toLowerCase().includes("suspicious") || status.toLowerCase().includes("malicious")) {
+          doc.setTextColor(220, 38, 38);
+        } else {
+          doc.setTextColor(22, 163, 74);
+        }
+        doc.text(status, margin + 20, y);
+        y += 5;
+
+        if (redirects.length > 0) {
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(100, 116, 139);
+          doc.text("Redirects :", margin + 5, y);
+          y += 4.5;
+
+          redirects.forEach((step) => {
+            checkPageBreak(6);
+            doc.text(`↓  ${step}`, margin + 10, y);
+            y += 4.5;
+          });
+        }
+        y += 2;
+      });
+      y += 4;
+    }
+
+    // 6. HIGHLIGHTED CONTENT
+    if (result.highlighted_content && result.highlighted_content.length > 0) {
+      checkPageBreak(30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Detected Phishing Phrases", margin, y);
+      y += 3;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      result.highlighted_content.forEach((item) => {
+        checkPageBreak(12);
+        const phrase = typeof item === "string" ? item : item.text || item.phrase || "";
+        const reason = typeof item === "object" ? item.reason || item.type || "Suspicious Trigger" : "Suspicious Trigger";
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(185, 28, 28);
+        const phraseLines = doc.splitTextToSize(`"${phrase}"`, contentWidth - 10);
+        doc.text(phraseLines, margin + 2, y);
+        y += phraseLines.length * 4.5;
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Reason : ${reason}`, margin + 6, y);
+        y += 6;
+      });
+      y += 4;
+    }
+
+    // 7. RECOMMENDATIONS
+    if (result.recommended_action && result.recommended_action.length > 0) {
+      checkPageBreak(30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Recommendations", margin, y);
+      y += 3;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+
+      result.recommended_action.forEach((act) => {
+        checkPageBreak(8);
+        const actText = typeof act === "string" ? act : act.action || act.description || JSON.stringify(act);
+        const wrappedAct = doc.splitTextToSize(`• ${actText}`, contentWidth - 5);
+        doc.text(wrappedAct, margin + 2, y);
+        y += wrappedAct.length * 4.5;
+      });
+      y += 6;
+    }
+
+    // 8. FOOTER
+    checkPageBreak(25);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Generated by Email Phishing Analyzer", pageWidth / 2, pageHeight - 12, { align: "center" });
+    doc.text("© 2026", pageWidth / 2, pageHeight - 8, { align: "center" });
+
+    // Save with precise standard file layout
+    doc.save(`Email_Phishing_Report_${scanId}.pdf`);
+  };
+
   const tabBtn = (id) => ({
     fontFamily: "'Space Mono', monospace",
     fontSize: "0.78rem",
@@ -176,7 +435,7 @@ export default function Dashboard({ dark, toggleTheme }) {
         padding: "1rem 2rem",
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justify: "space-between",
         borderBottom: `1px solid ${dark ? "rgba(56,189,248,0.12)" : "rgba(3,105,161,0.12)"}`,
         backdropFilter: "blur(12px)",
         position: "sticky",
@@ -353,17 +612,31 @@ export default function Dashboard({ dark, toggleTheme }) {
                   Threat Intelligence Report
                 </h2>
               </div>
-              <button
-                onClick={handleReset}
-                style={{
-                  fontFamily: "'Space Mono', monospace", fontSize: "0.78rem", fontWeight: 700,
-                  padding: "0.7rem 1.2rem", borderRadius: 10,
-                  border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
-                  background: "transparent", color: dark ? "#94a3b8" : "#64748b", cursor: "pointer", letterSpacing: 1,
-                }}
-              >
-                ← NEW SCAN
-              </button>
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                <button
+                  onClick={downloadPDF}
+                  style={{
+                    fontFamily: "'Space Mono', monospace", fontSize: "0.78rem", fontWeight: 700,
+                    padding: "0.7rem 1.2rem", borderRadius: 10,
+                    border: `1px solid ${dark ? "#38bdf8" : "#0369a1"}`,
+                    background: "linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)", color: "#fff", cursor: "pointer", letterSpacing: 1,
+                    boxShadow: "0 0 12px rgba(56, 189, 248, 0.25)"
+                  }}
+                >
+                  📄 Download PDF
+                </button>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    fontFamily: "'Space Mono', monospace", fontSize: "0.78rem", fontWeight: 700,
+                    padding: "0.7rem 1.2rem", borderRadius: 10,
+                    border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
+                    background: "transparent", color: dark ? "#94a3b8" : "#64748b", cursor: "pointer", letterSpacing: 1,
+                  }}
+                >
+                  ← NEW SCAN
+                </button>
+              </div>
             </div>
 
             {/* Results Display Panel Split Layout Split */}
@@ -558,103 +831,83 @@ export default function Dashboard({ dark, toggleTheme }) {
 
                     <div style={{ ...imagePanelStyles.card, background: dark ? "rgba(15,23,42,0.2)" : "#fff" }}>
                       <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.5rem", fontWeight: 700 }}>
-                        // VISUAL CONTENT FORENSICS
+                        // FORENSIC EXTRACTION RESULTS
                       </h3>
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.72rem" }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "#64748b" }}>Emails Detected:</span>
-                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.emails_detected || 0}</strong>
+                          <span style={{ color: "#64748b" }}>Flagged Bounding Boxes:</span>
+                          <strong style={{ color: imgAnalysis.ocr_blocks?.some(b => b.suspicious) ? "#ef4444" : "#10b981" }}>
+                            {imgAnalysis.ocr_blocks?.filter(b => b.suspicious).length || 0} Blocks
+                          </strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "#64748b" }}>Phone Lines Discovered:</span>
-                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.phone_detected || 0}</strong>
+                          <span style={{ color: "#64748b" }}>Embedded QR URLs:</span>
+                          <strong style={{ color: dark ? "#cbd5e1" : "#334155" }}>{imgAnalysis.qr_urls_count || 0}</strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "#64748b" }}>Brand Signatures:</span>
-                          <strong style={{ color: "#f59e0b" }}>{imgAnalysis.brands_referenced || "None"}</strong>
+                          <span style={{ color: "#64748b" }}>OCR Text Payload:</span>
+                          <strong style={{ color: cleanOcrText ? "#38bdf8" : "#64748b" }}>
+                            {cleanOcrText ? "Extracted" : "None"}
+                          </strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#64748b" }}>Interactive Traps:</span>
+                          <strong style={{ color: imgAnalysis.ocr_blocks?.some(b => b.role === "button") ? "#a855f7" : "#10b981" }}>
+                            {imgAnalysis.ocr_blocks?.filter(b => b.role === "button").length || 0} Found
+                          </strong>
                         </div>
                       </div>
                     </div>
 
                   </div>
 
-                  {/* LAYER 3: CONSOLE VIEWPORT WINDOW FOR STRINGS CONTEXTS */}
-                  <div style={imagePanelStyles.card}>
-                    <h3 style={{ fontSize: "0.72rem", color: dark ? "#94a3b8" : "#475569", marginBottom: "0.6rem", fontWeight: 700 }}>
-                      // OCR EXTRACTED CONTENT CONSOLE STREAM
-                    </h3>
-                    <div style={{
-                      background: "rgba(0,0,0,0.25)",
-                      borderLeft: "3px solid #38bdf8",
-                      padding: "1rem",
-                      borderRadius: 8,
-                      fontSize: "0.75rem",
-                      color: dark ? "#cbd5e1" : "#475569",
-                      whiteSpace: "pre-wrap",
-                      textAlign: "left",
-                      maxHeight: "220px",
-                      overflowY: "auto",
-                      lineHeight: "1.6"
-                    }}>
-                      {cleanOcrText || "No text layers discovered inside raster footprint data."}
+                  {/* LAYER 3: RECONSTRUCTED OCR TEXT DUMP */}
+                  {cleanOcrText && (
+                    <div style={imagePanelStyles.card}>
+                      <h3 style={{ fontSize: "0.72rem", color: "#38bdf8", borderBottom: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, paddingBottom: "0.5rem", marginBottom: "0.75rem", fontWeight: 700 }}>
+                        // RECONSTRUCTED TEXT FROM IMAGE (OCR)
+                      </h3>
+                      <div style={{
+                        background: dark ? "rgba(7,14,26,0.6)" : "rgba(241,245,249,0.8)",
+                        border: `1px solid ${dark ? "#1e3a5f" : "#cbd5e1"}`,
+                        borderRadius: 8, padding: "0.85rem", fontSize: "0.75rem",
+                        color: dark ? "#94a3b8" : "#475569", maxHeight: "140px", overflowY: "auto",
+                        whiteSpace: "pre-wrap", textAlign: "left"
+                      }}>
+                        {cleanOcrText}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* WRAPPED COMPONENT CONDITIONAL CHECKED GATE TO AVOID RENDER OF BLANK BOXES */}
-                  {((result.reasons && result.reasons.length > 0 && result.reasons[0]?.type !== "clean") || 
-                    (result.urls_found && result.urls_found.length > 0)) && (
-                    <FindingsList
-                      dark={dark}
-                      reasons={result.reasons}
-                      highlightedContent={result.highlighted_content}
-                      urlsFound={result.urls_found}
-                      emlDetails={result.eml_details}
-                      fileType={result.file_type}
-                      confidenceLevel={result.confidence_level}
-                    />
                   )}
+
+                  {/* LAYER 4: FINDINGS LIST COMPONENT INTEGRATION */}
+                  <FindingsList
+                    dark={dark}
+                    reasons={result.reasons}
+                    highlightedContent={result.highlighted_content}
+                    urlsFound={result.urls_found}
+                    emlDetails={null}
+                    fileType="image"
+                    confidenceLevel={imgAnalysis.confidence_ceiling || 65}
+                  />
 
                 </div>
               ) : (
-                /* NATIVE FILE SPECIFICATION (.eml & .pdf) SPLIT VIEWS */
+                /* STANDARD DEFAULT FILE ANALYSIS VIEW (.EML / .PDF) */
                 <FindingsList
                   dark={dark}
                   reasons={result.reasons}
                   highlightedContent={result.highlighted_content}
                   urlsFound={result.urls_found}
                   emlDetails={result.eml_details}
-                  fileType={result.file_type} 
-                  confidenceLevel={result.confidence_level}
+                  fileType={result.file_type || "eml"}
+                  confidenceLevel={result.file_type === "pdf" ? 80 : 98}
                 />
               )}
-            </div>
 
-            {/* Bottom summary ribbon */}
-            <div style={{
-              marginTop: "1.25rem", padding: "1.1rem 1.5rem",
-              background: dark ? "rgba(15,23,42,0.95)" : "rgba(248,250,252,0.95)",
-              border: `1px solid ${dark ? "#1e3a5f" : "#e2e8f0"}`, borderRadius: 14,
-              display: "flex", alignItems: "center", flexWrap: "wrap", gap: "1.5rem",
-            }}>
-              {[
-                { label: "RISK SCORE",  value: `${result.risk_score ?? 0}/100`,         color: "#ef4444" },
-                { label: "SEVERITY",    value: result.severity || "Low",                color: result.risk_score >= 40 ? "#ef4444" : "#22c55e" },
-                { label: "INDICATORS",  value: (result.reasons || []).filter(r => r.type !== "clean").length, color: "#f59e0b" },
-                { label: "DANGER URLS", value: result.danger_urls ?? 0,                 color: result.danger_urls > 0 ? "#ef4444" : "#22c55e" },
-                { label: "SCAN ID",     value: result.scan_id || "N/A",                 color: dark ? "#64748b" : "#94a3b8" },
-              ].map((s, i) => (
-                <div key={i}>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.63rem", letterSpacing: 2, color: dark ? "#475569" : "#94a3b8", marginBottom: "0.2rem" }}>
-                    {s.label}
-                  </div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: "0.9rem", color: s.color }}>
-                    {s.value}
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
+
       </main>
     </div>
   );
