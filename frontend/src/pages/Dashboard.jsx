@@ -81,8 +81,19 @@ export default function Dashboard({ dark, toggleTheme }) {
       
       console.log("🚀 Fresh Backend Packet Payload:", data); 
       setResult(data);
-    } catch {
-      setError("Analysis failed. Please ensure the backend is running at the configured URL.");
+    } catch (err) {
+      // 🎯 BULLETPROOF ERROR CHECKING CHAIN
+      let serverErrorMessage = "Analysis failed. Please ensure the backend is running at the configured URL.";
+      
+      if (err.response && err.response.data) {
+        if (typeof err.response.data.detail === "string") {
+          serverErrorMessage = err.response.data.detail;
+        } else if (err.response.data.message) {
+          serverErrorMessage = err.response.data.message;
+        }
+      }
+      
+      setError(serverErrorMessage);
     } finally {
       setScanning(false);
     }

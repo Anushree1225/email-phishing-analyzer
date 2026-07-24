@@ -17,6 +17,9 @@ from services.ocr_service import extract_text_and_qr_from_image
 # ✏️ ADDED: Import your advanced textual processing engine
 from services.content_analyzer import analyze_content
 
+# 🛡️ GATEWAY ENFORCEMENT IMPORT
+from services.gateway_service import enforce_email_structural_gate
+
 router = APIRouter()
 
 # --- 1. TEXT SCAN HANDLING ---
@@ -67,9 +70,13 @@ async def analyze_email_file(file: UploadFile = File(...)):
     file_bytes = await file.read()
     print(f"Successfully Buffered: {len(file_bytes)} bytes")
     
-    # 🎯 REAL ROUTING FOR WEEK 2 EXTRACTION & RISK CALCULATION
+    # 🎯 REAL ROUTING FOR EXTRACTION & RISK CALCULATION
     if file_extension == "eml":
         try:
+            # 🛡️ GATEWAY CHECK: Verify EML raw string structure
+            raw_eml_string = file_bytes.decode(errors="ignore")
+            enforce_email_structural_gate(raw_eml_string, "eml")
+
             # Parse and execute real dynamic scoring logic on the file content
             eml_analysis = parse_eml(file_bytes)
             
@@ -124,17 +131,37 @@ async def analyze_email_file(file: UploadFile = File(...)):
                 "eml_details": details_inner  
             }
             
+        except HTTPException as he:
+            raise he
         except Exception as e:
             import traceback
             traceback.print_exc()  
             raise HTTPException(status_code=500, detail=f"EML Processing failed: {str(e)}")
 
     # 🚀 REAL DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
+    # 🚀 REAL DYNAMIC PDF INTELLIGENCE ROUTING ROUTE
     elif file_extension == "pdf":
         try:
             print(f"--- [PDF SCAN] Routing to Specialized Processing Deck ---")
             
-            # Dispatch the raw file stream arrays to your custom parser module
+            # 📄 SAFE PEEK EXTRACTOR: Pull raw text first using pypdf to check if it's even an email layout
+            import pypdf
+            import io
+            raw_text_peek = ""
+            try:
+                pdf_reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        raw_text_peek += page_text + "\n"
+            except Exception:
+                pass  # Fallback gracefully if the PDF text layer is compressed
+
+            # 🛡️ GATEWAY CHECK: Run it right here at the entrance! 
+            # If it's a generic document or results sheet, it stops here with a clean 400 error.
+            enforce_email_structural_gate(raw_text_peek, "pdf")
+            
+            # Dispatch the raw file stream arrays to your custom parser module (Runs safely now!)
             pdf_analysis = parse_pdf(file_bytes)
             
             # Extract nested fields safely to preserve terminal telemetry logs
@@ -160,6 +187,8 @@ async def analyze_email_file(file: UploadFile = File(...)):
             
             return pdf_analysis
             
+        except HTTPException as he:
+            raise he
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -203,6 +232,9 @@ async def analyze_email_file(file: UploadFile = File(...)):
                             "role": "neutral"
                         })
                     extracted_text = "\n".join(text_lines)
+
+            # 🛡️ GATEWAY CHECK: Run check on extracted visual string characters immediately after OCR completes
+            enforce_email_structural_gate(extracted_text, "image")
 
             # --- EXTRACTION LOGIC FOR VISIBLE TEXT LINKS (Fuzzy OCR Fix) ---
             standard_urls = re.findall(r'(?:https?://|www\.)[^\s]+', extracted_text)
@@ -364,6 +396,8 @@ async def analyze_email_file(file: UploadFile = File(...)):
                     "ocr_blocks": ocr_blocks
                 }
             }
+        except HTTPException as he:
+            raise he
         except Exception as e:
             import traceback
             traceback.print_exc()

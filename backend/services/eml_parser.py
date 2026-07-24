@@ -32,12 +32,7 @@ def check_dns_records(domain: str) -> dict:
         "dmarc_analyst_note": "No DMARC policy found. Domain is highly vulnerable to identity spoofing.",
         # 🎯 ADDED: Structural mapping dictionary for individual DMARC record sub-tags
         "dmarc_tags": {
-            "v": "N/A",
-            "p": "N/A",
-            "pct": "N/A",
-            "rua": "N/A",
-            "ruf": "N/A",
-            "fo": "N/A"
+            "v": "N/A", "p": "N/A", "pct": "N/A", "rua": "N/A", "ruf": "N/A", "fo": "N/A"
         }
     }
     
@@ -72,6 +67,7 @@ def check_dns_records(domain: str) -> dict:
                     dns_report["spf_analyst_note"] = "Custom SPF mechanism deployed. Review listed include/ip4 blocks for source alignment."
                 break
     except Exception:
+        dns_report["spf_record"] = "SPF Not Found"
         dns_report["spf_analyst_note"] = "FAILED: Domain completely lacks an SPF security record. High spoofing potential."
 
     # 3. LIVE DMARC POLICY LOOKUP & SOC INTERPRETATION
@@ -96,7 +92,11 @@ def check_dns_records(domain: str) -> dict:
                     dns_report["dmarc_analyst_note"] = "Monitoring Only (p=none). Domain owner tracking traffic metrics, but fake emails will still land in targets' inboxes."
                 break
     except Exception:
+        dns_report["dmarc_policy"] = "DMARC Not Found"
         dns_report["dmarc_analyst_note"] = "FAILED: No active DMARC alignment record published. Mail clients cannot verify sender authenticity."
+        dns_report["dmarc_tags"] = {
+            "v": "N/A", "p": "N/A", "pct": "N/A", "rua": "N/A", "ruf": "N/A", "fo": "N/A"
+        }
 
     return dns_report
 
